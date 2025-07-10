@@ -23,9 +23,9 @@ def teacher_required(view_func):
 
 @teacher_required
 def question_list(request):
-    """List all questions for the teacher's organization"""
+    """List all questions created by the current teacher"""
     questions = Question.objects.filter(
-        organization=request.user.profile.organization,
+        created_by=request.user,
         is_active=True
     )
     context = {
@@ -81,7 +81,7 @@ def question_edit(request, pk):
     question = get_object_or_404(
         Question, 
         pk=pk, 
-        organization=request.user.profile.organization,
+        created_by=request.user,
         is_active=True
     )
     
@@ -128,7 +128,7 @@ def question_delete(request, pk):
     question = get_object_or_404(
         Question,
         pk=pk,
-        organization=request.user.profile.organization,
+        created_by=request.user,
         is_active=True
     )
     

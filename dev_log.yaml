@@ -348,6 +348,26 @@ prompt_log:
     purpose: Prevent bugs by having clear test criteria before version completion
     status: test_criteria_added
 
+  - prompt_id: 22
+    date: 2025-01-10
+    user_request: Fix security bug - questions and tests visible to other teachers, should be user-specific only
+    action: Changed all queries from organization-based to created_by user-based filtering for security
+    files_modified:
+      - questions/views.py
+      - tests/views.py
+      - questions/admin.py
+      - tests/admin.py
+      - dev_log.yaml
+    security_fixes:
+      - Questions now filtered by created_by=request.user instead of organization
+      - Tests now filtered by created_by=request.user instead of organization
+      - Question selection in test creation limited to user's own questions
+      - Admin interface filters by created_by for non-superusers
+      - Prevents malicious users from accessing/modifying other users' content
+    reasoning: Since registration is open, any user can register as teacher and potentially access/modify other teachers' content
+    impact: Critical security fix - each teacher now sees only their own questions and tests
+    status: security_vulnerability_fixed
+
 current_setup:
   database:
     type: PostgreSQL

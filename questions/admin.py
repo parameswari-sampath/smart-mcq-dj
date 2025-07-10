@@ -18,7 +18,10 @@ class QuestionAdmin(admin.ModelAdmin):
     inlines = [ChoiceInline]
     
     def get_queryset(self, request):
-        return super().get_queryset(request).filter(is_active=True)
+        qs = super().get_queryset(request).filter(is_active=True)
+        if not request.user.is_superuser:
+            qs = qs.filter(created_by=request.user)
+        return qs
 
 
 @admin.register(Choice)

@@ -24,9 +24,9 @@ def teacher_required(view_func):
 
 @teacher_required
 def test_list(request):
-    """List all tests for the teacher's organization"""
+    """List all tests created by the current teacher"""
     tests = Test.objects.filter(
-        organization=request.user.profile.organization,
+        created_by=request.user,
         is_active=True
     )
     context = {
@@ -59,7 +59,7 @@ def test_create(request):
     
     # Get available questions for selection
     available_questions = Question.objects.filter(
-        organization=request.user.profile.organization,
+        created_by=request.user,
         is_active=True
     )
     
@@ -75,7 +75,7 @@ def test_edit(request, pk):
     test = get_object_or_404(
         Test, 
         pk=pk, 
-        organization=request.user.profile.organization,
+        created_by=request.user,
         is_active=True
     )
     
@@ -96,7 +96,7 @@ def test_edit(request, pk):
     
     # Get available questions for selection
     available_questions = Question.objects.filter(
-        organization=request.user.profile.organization,
+        created_by=request.user,
         is_active=True
     )
     
@@ -113,7 +113,7 @@ def test_delete(request, pk):
     test = get_object_or_404(
         Test,
         pk=pk,
-        organization=request.user.profile.organization,
+        created_by=request.user,
         is_active=True
     )
     
@@ -133,7 +133,7 @@ def test_detail(request, pk):
     test = get_object_or_404(
         Test,
         pk=pk,
-        organization=request.user.profile.organization,
+        created_by=request.user,
         is_active=True
     )
     
