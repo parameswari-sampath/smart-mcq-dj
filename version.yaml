@@ -1,0 +1,788 @@
+versions:
+  v0.1: Project Setup with PostgreSQL and Django
+    questions:
+      - What Django apps should be created initially?
+      - What are the basic Django settings configurations needed?
+      - What PostgreSQL database name and user credentials?
+      - Should we use Django's default project structure or customize it?
+      - What static files and media files setup is needed?
+      - What basic templates structure should be created?
+    answers:
+      - Create 'accounts', 'questions', 'tests', 'sessions' apps initially
+      - Basic settings: DEBUG=True, PostgreSQL config, static files, Bootstrap CDN
+      - Database: 'smart_mcq_db', user: 'mcq_user', password: secure random string
+      - Use Django's default structure with minor customizations for templates
+      - Static: '/static/' URL, media: '/media/' for question images
+      - Base template with Bootstrap, separate templates for each app
+    industry_solution:
+      - MOODLE ARCHITECTURE: Clear separation of concerns across apps
+      - CORE MODELS: User → Profile → Enrollment → Course/Class → Test → TestAttempt → Answer
+      - LMS PATTERN: Course-based enrollment system (like Canvas/Blackboard)
+      - SCALABILITY: Design for multi-tenancy from start (organization_id in all models)
+      - STATE MANAGEMENT: TestAttempt tracks all session state and progress
+      - IMPLEMENTATION: Add organization field to all major models immediately
+    notes:
+      - ARCHITECTURE: Based on proven LMS patterns used by millions
+      - FUTURE-PROOF: Multi-tenant ready from day one
+      - INDUSTRY STANDARD: Enrollment-based access control
+
+  v0.2: Authentication with Role-Based Access Control (Student & Teacher)
+    questions:
+      - Should we extend Django's User model or create a Profile model?
+      - What fields are needed for Student and Teacher profiles?
+      - How should role-based permissions be implemented?
+      - What authentication views are needed (login, logout, register)?
+      - Should registration be open or invite-only?
+      - What are the different permission levels for each role?
+    answers:
+      - Create Profile model with OneToOne to User (keeps User model clean)
+      - Profile fields: role (Student/Teacher), created_at, updated_at, is_active
+      - Use Django Groups: 'Students' and 'Teachers' with custom permissions
+      - Standard views: login, logout, register with role selection
+      - Open registration for MVP, add invite-only later if needed
+      - Teachers: CRUD questions/tests, view results; Students: take tests, view own results
+    notes:
+      - ALTERNATIVE: Consider custom User model with role field for v1.4+ optimization
+      - Profile approach chosen for MVP to avoid User model complexity early on
+      - Role-based access is central to app logic, evaluate custom User in future versions
+
+  v0.3: Question Bank (CRUD for Teacher)
+    questions:
+      - What fields does a Question model need?
+      - How many answer choices per question (fixed or variable)?
+      - Should questions have categories/tags?
+      - What question types are supported initially (only MCQ)?
+      - Should questions have difficulty levels?
+      - What bulk import/export features are needed?
+      - How should question images be handled?
+    answers:
+      - Question: title, description, created_by, created_at, updated_at, is_active
+      - Fixed 4 choices (A, B, C, D) for MVP simplicity
+      - Simple category CharField (no complex tagging initially)
+      - Only MCQ type for MVP, extend later
+      - Simple difficulty: Easy/Medium/Hard CharField
+      - No bulk import for MVP, manual entry only
+      - Optional ImageField for question images, stored in media/questions/
+    notes:
+      - FUTURE: Convert category CharField to ManyToMany Tag model in v3.5
+      - Current simple approach supports basic categorization for MVP
+      - Tag system must be flexible for question pooling in advanced versions
+
+  v0.4: Test Bank (Assemble test with selected questions)
+    questions:
+      - What fields does a Test model need?
+      - How should questions be selected for a test?
+      - Should tests have time limits?
+      - What are the test configuration options?
+      - How should test templates be managed?
+      - Can questions be reordered in a test?
+      - Should there be test categories?
+    answers:
+      - Test: title, description, created_by, time_limit_minutes, created_at, is_active
+      - Manual selection via checkboxes in admin/form, ManyToMany to Question
+      - Yes, time limit in minutes (default 60)
+      - Basic config: title, description, time limit, question selection
+      - No templates for MVP, each test is unique
+      - Questions displayed in order added, no reordering for MVP
+      - Simple category CharField like questions
+
+  v0.5: Test Session Scheduling (Schedule time + generate access code)
+    questions:
+      - What fields does a TestSession model need?
+      - How should access codes be generated?
+      - What date/time scheduling options are needed?
+      - Should sessions have duration limits?
+      - Can sessions be rescheduled?
+      - How should timezone handling work?
+      - What happens if a session expires?
+    answers:
+      - TestSession: test, access_code, start_time, end_time, created_by, is_active
+      - 6-digit random alphanumeric code using Python secrets module
+      - Start datetime and end datetime fields (teacher sets both)
+      - Duration inherited from test time_limit + session window
+      - Simple edit form for rescheduling (teacher only)
+      - Use Django's timezone settings, default to server timezone for MVP
+      - Expired sessions show 'Session Expired' message, no access allowed
+    notes:
+      - CRITICAL: Students never access Test directly, only via TestSession
+      - Access control: TestSession.access_code is the ONLY student entry point
+      - Test model should NOT have any public access methods or codes
+      - This separation allows multiple sessions per test with different schedules
+
+  v0.6: Student Test Access (Access code + Dashboard listing)
+    questions:
+      - How should students enter access codes?
+      - What information should be shown on student dashboard?
+      - Should there be test status indicators?
+      - How should upcoming vs completed tests be displayed?
+      - What actions can students perform on listed tests?
+      - Should there be search/filter options?
+    answers:
+      - Simple text input field with 'Join Test' button on dashboard
+      - Dashboard: test title, session time, status, score (if completed)
+      - Status indicators: Upcoming (blue), Ongoing (green), Completed (gray)
+      - Separate sections with Bootstrap cards for each status
+      - Actions: 'Join Test' (upcoming/ongoing), 'View Results' (completed)
+      - No search/filter for MVP, simple chronological listing
+    notes:
+      - LOGICAL ISSUE: How do students know which tests they can take?
+      - MISSING: Student enrollment/assignment to tests mechanism
+      - FLOW GAP: Students need a way to discover available tests beyond access codes
+      - CONSIDERATION: Add teacher ability to 'assign' tests to specific students
+
+  v1.0: Test Attempt UI (One question at a time, Next/Prev)
+    questions:
+      - How should the test-taking interface look?
+      - Should there be a question counter (1 of 10)?
+      - How should answer options be displayed?
+      - What happens when a student selects an answer?
+      - Should there be a progress indicator?
+      - How should navigation buttons be styled?
+      - Should there be keyboard shortcuts?
+    answers:
+      - Clean Bootstrap card layout with question at top, options below
+      - Yes, show 'Question X of Y' at top right
+      - Radio buttons with Bootstrap styling, clear labels A, B, C, D
+      - Selection is saved immediately via AJAX (no page refresh)
+      - Simple progress bar at bottom showing completed questions
+      - Bootstrap buttons: 'Previous' (secondary), 'Next' (primary)
+      - No keyboard shortcuts for MVP, focus on mouse/touch interaction
+    notes:
+      - DEPENDENCY MISSING: Need TestAttempt model to track student progress
+      - LOGICAL GAP: Where is test session state stored during attempt?
+      - FLOW ISSUE: How to handle browser refresh or accidental navigation?
+      - REQUIRED: Session persistence mechanism for ongoing tests
+
+  v1.1: Countdown Timer and Auto-Submit on Timeout
+    questions:
+      - Where should the countdown timer be displayed?
+      - What warnings should be shown before timeout?
+      - Should there be sound alerts for time warnings?
+      - How should auto-submit work?
+      - What happens if connection is lost during auto-submit?
+      - Should timer be visible on all pages?
+    answers:
+      - Fixed position at top-right corner of screen
+      - Warning alerts at 5 minutes and 1 minute remaining
+      - No sound alerts for MVP (browser compatibility issues)
+      - Auto-submit via JavaScript form submission when timer reaches zero
+      - Show retry message with manual submit button if auto-submit fails
+      - Timer visible on all test pages, hidden on result pages
+
+  v1.2: Test Submission and Instant Evaluation
+    questions:
+      - What confirmation is needed before submission?
+      - How should evaluation be calculated?
+      - Should partial credit be supported?
+      - What happens after submission?
+      - How should unanswered questions be handled?
+      - Should there be a submission summary?
+    answers:
+      - Bootstrap modal with 'Are you sure?' and list of unanswered questions
+      - Simple scoring: correct answer = 1 point, incorrect/blank = 0 points
+      - No partial credit for MVP (only MCQ with single correct answer)
+      - Redirect to results page immediately after submission
+      - Unanswered questions count as incorrect (0 points)
+      - Show summary: 'X out of Y questions answered' before confirmation
+    notes:
+      - CRITICAL: Store detailed answer data for analytics
+      - Each answer should include: was_correct (boolean), answered_at (timestamp)
+      - Additional fields: selected_option, time_spent_seconds
+      - This data structure supports behavior tracking in v1.5-v1.7
+      - Answer model: student, question, test_session, selected_option, is_correct, answered_at
+
+  v1.3: Student Result View (Score + correct vs selected)
+    questions:
+      - What result information should be shown?
+      - How should correct vs incorrect answers be displayed?
+      - Should explanations be shown immediately?
+      - What charts/graphs should be included?
+      - Should there be a detailed question breakdown?
+      - Can students review their answers?
+    answers:
+      - Show total score, percentage, passed/failed status
+      - Green checkmark for correct, red X for incorrect answers
+      - No explanations for MVP (implement in v2.2)
+      - Simple pie chart showing correct vs incorrect distribution
+      - Yes, show each question with student's answer vs correct answer
+      - Yes, full review of all questions with answers highlighted
+    notes:
+      - LOGICAL CONFLICT: v1.3 shows correct answers but v2.2 adds explanations
+      - DECISION NEEDED: Should correct answers be revealed immediately or delayed?
+      - TEACHER CONTROL: Need setting to control when students see correct answers
+      - CONSIDERATION: Some teachers may want to review before revealing answers
+
+  v1.4: Teacher Result View (Student answers & score)
+    questions:
+      - How should teacher view all student results?
+      - What sorting and filtering options are needed?
+      - Should there be analytics and statistics?
+      - How should individual student performance be shown?
+      - What export options are needed?
+      - Should there be comparison features?
+    answers:
+      - Bootstrap table with student name, score, percentage, completion time
+      - Basic sorting by name, score, or completion time (no complex filtering)
+      - Simple stats: average score, highest/lowest, completion rate
+      - Click student name to view detailed answer breakdown
+      - No export for MVP (implement in v2.5)
+      - No comparison features for MVP, just individual results
+
+  v1.5: Tab Switch Tracking and Focus Loss Detection
+    questions:
+      - What events should be tracked?
+      - How should violations be displayed to teachers?
+      - Should there be automatic warnings to students?
+      - What data should be stored for each event?
+      - How should severity levels be handled?
+      - Should there be real-time monitoring?
+    answers:
+      - Track: tab switch (visibilitychange), window blur/focus, page unload
+      - Simple table in teacher results showing violation count per student
+      - Show warning modal to student: 'Focus on test, tab switching detected'
+      - Store: timestamp, event type, student, test session
+      - Simple count-based severity: 1-2 warnings, 3+ serious violations
+      - No real-time monitoring for MVP, review violations post-test
+    industry_solution:
+      - PROCTORIO APPROACH: Configurable violation policies per test
+      - WARNING SYSTEM: 1st warning, 2nd final warning, 3rd auto-submit or lock
+      - TEACHER SETTINGS: Max violations allowed, action on violation (warn/submit/lock)
+      - GRACE PERIOD: Brief window to return focus before counting violation
+      - APPEAL PROCESS: Students can add notes explaining violations
+      - IMPLEMENTATION: Add proctoring_settings JSON field to Test model
+
+  v1.6: Time Tracking Per Question (Start-End duration capture)
+    questions:
+      - What timing data should be captured?
+      - How should time spent per question be calculated?
+      - Should there be idle time detection?
+      - How should timing reports be displayed?
+      - What analytics should be generated?
+      - Should there be time-based insights?
+    answers:
+      - Capture: question start time, question end time, total duration
+      - Calculate time when student navigates away from question
+      - No idle detection for MVP, just active time on question
+      - Simple table showing average time per question for teachers
+      - Basic analytics: fastest/slowest questions, time distribution
+      - No complex insights for MVP, just raw timing data
+
+  v1.7: Behavior Log Viewer for Teachers/Admin
+    questions:
+      - What behavior data should be logged?
+      - How should logs be displayed and filtered?
+      - What search capabilities are needed?
+      - Should there be behavior pattern analysis?
+      - How should suspicious activity be highlighted?
+      - What export options for behavior data?
+    answers:
+      - Log: tab switches, focus loss, time per question, submission attempts
+      - Simple table with student, event type, timestamp, test session
+      - Basic search by student name or event type
+      - No pattern analysis for MVP, just raw event listing
+      - Highlight rows with high violation counts (3+ tab switches)
+      - No export for MVP, teacher can view in browser only
+
+  v2.0: Question Navigator (Jump to Q1-Q10)
+    questions:
+      - How should the question navigator be displayed?
+      - Should it show answered/unanswered status?
+      - How should question numbers be styled?
+      - Should there be direct jump functionality?
+      - How should it work with question flow?
+      - Should there be visual indicators for flagged questions?
+    answers:
+      - Horizontal button row at top of test interface
+      - Yes, answered buttons in green, unanswered in gray
+      - Simple numbered buttons (1, 2, 3...) with Bootstrap styling
+      - Yes, click any number to jump directly to that question
+      - Independent of Next/Previous flow, allows free navigation
+      - No flagging indicators for MVP (implement in v2.1)
+
+  v2.1: Mark for Review Feature
+    questions:
+      - How should students mark questions for review?
+      - Where should review indicators be displayed?
+      - How should review list be accessed?
+      - Can review marks be toggled?
+      - Should there be review reminders?
+      - How should review status be saved?
+    answers:
+      - 'Mark for Review' checkbox below each question
+      - Show star icon on question navigator buttons for marked questions
+      - 'Review List' button showing all marked questions
+      - Yes, checkbox can be toggled on/off
+      - Show 'X questions marked for review' reminder before submission
+      - Save review status in database with each answer
+
+  v2.2: Explanation and Feedback per Question
+    questions:
+      - How should explanations be structured?
+      - Should explanations include multimedia?
+      - When should explanations be shown?
+      - How should feedback be personalized?
+      - Should there be links to additional resources?
+      - How should explanation quality be managed?
+    answers:
+      - Simple text explanation field in Question model
+      - No multimedia for MVP, just text explanations
+      - Show explanations only after test submission in results view
+      - No personalization for MVP, same explanation for all students
+      - No external links for MVP, self-contained explanations
+      - Teacher responsibility to write quality explanations, no validation
+
+  v2.3: Student Dashboard (Upcoming, Ongoing, Completed Tests)
+    questions:
+      - How should different test states be displayed?
+      - What information should be shown for each test?
+      - Should there be calendar integration?
+      - How should notifications be displayed?
+      - What quick actions should be available?
+      - Should there be achievement/progress tracking?
+    answers:
+      - Three separate Bootstrap card sections for each state
+      - Show test title, date/time, duration, teacher name
+      - No calendar integration for MVP, just list view
+      - Simple alert banners for notifications (no real-time)
+      - Actions: 'Start Test', 'View Results', 'Details'
+      - No achievement tracking for MVP, just test history
+
+  v2.4: Invite Students via Email or Code
+    questions:
+      - How should email invitations be sent?
+      - What information should be included in invites?
+      - How should bulk invitations work?
+      - Should there be invitation templates?
+      - How should invitation status be tracked?
+      - What happens when invitations expire?
+    answers:
+      - Django's built-in email backend with SMTP configuration
+      - Include test name, date/time, access code, teacher name
+      - Simple textarea for multiple email addresses (one per line)
+      - Single email template for all test invitations
+      - No tracking for MVP, just send and assume received
+      - No invitation expiry for MVP, access codes work until test starts
+    industry_solution:
+      - CANVAS APPROACH: Enrollment-based invitations, not just email blasts
+      - STUDENT ROSTER: Teachers manage class rosters with student contact info
+      - INVITATION TYPES: Email invite + auto-enrollment, or email with join code
+      - TRACKING: Delivery status, open rates, click-through rates
+      - REMINDERS: Automatic reminder emails before test deadline
+      - IMPLEMENTATION: Invitation model tracks status, scheduled reminder jobs
+    notes:
+      - WORKFLOW RESOLVED: Enrollment system provides student contact info
+      - PROFESSIONAL: Enterprise-grade invitation and reminder system
+      - INTEGRATION: Works seamlessly with enrollment-based access control
+
+  v2.5: CSV/PDF Export of Results
+    questions:
+      - What data should be included in exports?
+      - How should PDF reports be formatted?
+      - Should there be export templates?
+      - What customization options are needed?
+      - How should large datasets be handled?
+      - Should there be scheduled exports?
+    answers:
+      - CSV: student name, email, score, percentage, completion time
+      - Use ReportLab library for PDF generation (external dependency)
+      - Single CSV template and single PDF template
+      - No customization for MVP, fixed format exports
+      - No special handling for large datasets in MVP
+      - No scheduled exports, manual download only
+    notes:
+      - DEPENDENCY ALERT: ReportLab is first external package beyond Django stack
+      - Consider if PDF export is essential for MVP or can be delayed
+      - Alternative: Start with CSV only, add PDF in later version
+
+  v2.6: Manual Scoring Support (Code & Subjective Answers)
+    questions:
+      - How should manual scoring interface work?
+      - What grading rubrics should be supported?
+      - How should partial credit be assigned?
+      - Should there be collaborative grading?
+      - How should grading history be tracked?
+      - What tools are needed for code evaluation?
+    answers:
+      - Simple form with student answer display and score input field
+      - No rubrics for MVP, teacher assigns points manually
+      - Allow decimal scores (0.5 out of 1.0) for partial credit
+      - No collaborative grading for MVP, single teacher scores
+      - Store original score, modified score, and modification timestamp
+      - No code evaluation tools for MVP, teacher reviews code manually
+
+  v2.7: Basic Email Notifications (Test Schedule, Result Alerts)
+    questions:
+      - What email templates are needed?
+      - How should notification preferences be managed?
+      - What triggers should send notifications?
+      - Should there be digest emails?
+      - How should email delivery be tracked?
+      - What customization options for emails?
+    answers:
+      - Templates: test invitation, test reminder, results available
+      - Simple checkbox in user profile: 'Receive email notifications'
+      - Triggers: test scheduled, 1 hour before test, results published
+      - No digest emails for MVP, individual notifications only
+      - No delivery tracking for MVP, assume emails are delivered
+      - No customization for MVP, fixed email templates
+    notes:
+      - CONFLICT: Email reminders need scheduling mechanism
+      - v2.7 introduces timed tasks but v3.6 introduces async/Redis
+      - RESOLUTION: Use simple cron job or django-crontab for v2.7
+      - Migrate to Celery/Redis when implementing v3.6
+
+  v2.8: Test Modes (Strict vs Practice)
+    questions:
+      - What differences should exist between modes?
+      - How should mode selection work?
+      - What restrictions apply in strict mode?
+      - Should practice mode have different features?
+      - How should mode affect scoring?
+      - What configuration options per mode?
+    answers:
+      - Strict: no tab switching allowed, timer enforced; Practice: relaxed rules
+      - Radio button selection when creating test session
+      - Strict mode: auto-submit on violations, strict time limits
+      - Practice mode: unlimited attempts, immediate feedback, no violations
+      - Strict mode counts for official grades, practice mode doesn't
+      - Simple mode field on TestSession model, no complex configurations
+    industry_solution:
+      - CANVAS APPROACH: Practice attempts vs Graded attempts
+      - ATTEMPT LIMIT: Set max attempts per student (e.g., 3 practice, 1 graded)
+      - SCORING POLICY: Highest score, latest score, or average score
+      - TIME LIMITS: Different time limits for practice vs graded
+      - FEEDBACK: Immediate feedback in practice, delayed in graded
+      - IMPLEMENTATION: attempt_type field, max_attempts setting per test
+    notes:
+      - LOGIC RESOLVED: Multiple attempts = multiple TestAttempt records
+      - STANDARD: Industry approach separates attempt types, not modes
+      - FLEXIBILITY: Teachers control attempt limits and scoring policies
+
+  v3.0: Coding Question Type (Python Editor + Test Cases)
+    questions:
+      - What code editor features are needed?
+      - How should test cases be defined?
+      - What programming languages to support?
+      - How should code execution be handled?
+      - What security measures are needed?
+      - Should there be code templates?
+    answers:
+      - Basic textarea with syntax highlighting (CodeMirror)
+      - Simple input/output test cases stored as JSON
+      - Python only initially, expand later
+      - Execute in sandboxed environment (Docker containers)
+      - Basic sandboxing, time limits, memory limits
+      - Simple function template provided for each question
+    notes:
+      - MAJOR DEPENDENCY: Requires Docker, CodeMirror, subprocess security
+      - CONFLICT: Code execution complexity vs MVP simplicity
+      - RECOMMENDATION: Consider this post-MVP unless critical for market
+      - Alternative: Start with theoretical coding questions (text answers)
+
+  v3.1: Fill in the Blanks / Short Answer Type
+    questions:
+      - How should blanks be defined in questions?
+      - What input types should be supported?
+      - How should answers be validated?
+      - Should there be auto-completion features?
+      - How should multiple blanks be handled?
+      - What scoring methods for partial credit?
+    answers:
+      - Use placeholder syntax like [BLANK1] in question text
+      - Text inputs and select dropdowns
+      - Exact string matching (case-insensitive)
+      - No auto-completion for MVP
+      - Each blank scored separately, average for final score
+      - Simple partial credit: correct blanks / total blanks
+
+  v3.2: Matching and Ordering Question Types
+    questions:
+      - How should matching interfaces work?
+      - What drag-and-drop functionality is needed?
+      - How should ordering questions be presented?
+      - Should there be visual feedback?
+      - How should complex matching be handled?
+      - What accessibility considerations?
+    answers:
+      - Simple drag-and-drop with HTML5 drag API
+      - Basic drag items to target zones
+      - Sortable list with drag handles
+      - Visual feedback with CSS hover states
+      - Keep matching simple, 1-to-1 relationships only
+      - Ensure keyboard navigation works for accessibility
+      - How should ordering questions be presented?
+      - Should there be visual feedback?
+      - How should complex matching be handled?
+      - What accessibility considerations?
+
+  v3.3: Question Randomization
+    questions:
+      - How should randomization be configured?
+      - Should there be question pools?
+      - How should randomization affect scoring?
+      - Should there be seed-based randomization?
+      - How should fairness be ensured?
+      - What reporting for randomized tests?
+    answers:
+      - Simple checkbox 'Randomize questions' when creating test
+      - No complex pools, random selection from all test questions
+      - Scoring remains the same, just question order changes
+      - No seed-based randomization, simple random shuffle
+      - Ensure all students get same questions, just different order
+      - Show original question order in teacher reports
+    industry_solution:
+      - BLACKBOARD APPROACH: Store randomized order per student attempt
+      - NAVIGATOR FIX: Show 'Question 1 of 10' instead of actual question numbers
+      - SEED-BASED: Use student ID + attempt ID as randomization seed for consistency
+      - QUESTION MAPPING: Store question_order field in TestAttempt
+      - ANALYTICS: Reports show both original and randomized order
+      - IMPLEMENTATION: Generate and store question sequence when attempt starts
+    notes:
+      - CONFLICT RESOLVED: Navigator shows position, not original question number
+      - CONSISTENCY: Same student gets same order on resume
+      - ANALYTICS: Full traceability for teacher review
+
+  v3.4: Answer Shuffling
+    questions:
+      - How should answer options be shuffled?
+      - Should shuffling be configurable per question?
+      - How should this affect answer keys?
+      - Should there be consistent shuffling?
+      - How should special answer types be handled?
+      - What impact on analytics?
+    answers:
+      - Random shuffle of A, B, C, D options for each student
+      - Apply to all questions, no per-question configuration
+      - Store original correct answer, map to shuffled position
+      - Different shuffle for each student
+      - No special handling, all MCQ options treated equally
+      - Analytics show original answer labels for consistency
+
+  v3.5: Question Pooling (Tag-Based Dynamic Test)
+    questions:
+      - How should question pools be defined?
+      - What tag system should be used?
+      - How should pool selection work?
+      - Should there be pool weighting?
+      - How should pool exhaustion be handled?
+      - What pool analytics are needed?
+    answers:
+      - Create pools based on question categories/tags
+      - Simple tag CharField, comma-separated tags
+      - Random selection from each pool based on requirements
+      - Equal weighting for MVP, no complex algorithms
+      - Show warning if pool has insufficient questions
+      - Basic analytics: questions per pool, usage statistics
+
+  v3.6: Redis + Async Handling (High Load, Event Queue)
+    questions:
+      - What data should be cached in Redis?
+      - How should session data be managed?
+      - What async tasks need queuing?
+      - How should cache invalidation work?
+      - What monitoring for Redis performance?
+      - How should failover be handled?
+    answers:
+      - Cache: question data, user sessions, test results
+      - Store active test sessions in Redis for fast access
+      - Queue: email sending, result calculations, file exports
+      - Simple TTL-based expiration, manual invalidation when needed
+      - Basic monitoring: connection status, memory usage
+      - Fallback to database if Redis unavailable
+
+  v3.7: Batch Code Execution (Queued, Sandboxed)
+    questions:
+      - How should code execution be queued?
+      - What sandboxing technology to use?
+      - How should resource limits be enforced?
+      - What security measures are needed?
+      - How should execution results be returned?
+      - What monitoring for execution systems?
+    answers:
+      - Use Celery with Redis as message broker
+      - Docker containers for sandboxing
+      - CPU time limits, memory limits, disk space limits
+      - Network isolation, read-only file system
+      - Store results in database, notify via WebSocket
+      - Monitor queue length, execution times, failure rates
+
+  v3.8: Question & Option Caching
+    questions:
+      - What caching strategies should be used?
+      - How should cache keys be structured?
+      - What cache invalidation triggers?
+      - How should cache performance be monitored?
+      - What fallback mechanisms?
+      - How should cache warming work?
+    answers:
+      - Cache frequently accessed questions and test data
+      - Keys: 'question:{id}', 'test:{id}:questions', 'user:{id}:tests'
+      - Invalidate when questions/tests are modified
+      - Monitor cache hit rates, response times
+      - Fall back to database queries if cache misses
+      - Pre-load popular questions and active tests
+
+  v3.9: User Session Caching (Fast resume/load)
+    questions:
+      - What session data should be cached?
+      - How should session restoration work?
+      - What happens on cache misses?
+      - How should concurrent sessions be handled?
+      - What session cleanup procedures?
+      - How should session security be maintained?
+    answers:
+      - Cache: current question, answers, time remaining, session state
+      - Restore from cache when user returns to test
+      - Rebuild session from database if cache miss
+      - Allow single active session per user per test
+      - Cleanup expired sessions daily
+      - Encrypt sensitive session data, validate session tokens
+
+  v4.0: B2B Pilot Launch for Colleges
+    questions:
+      - What onboarding process is needed?
+      - How should pilot feedback be collected?
+      - What success metrics should be tracked?
+      - What support documentation is needed?
+      - How should pilot limitations be communicated?
+      - What graduation criteria from pilot?
+    answers:
+      - Guided setup process with admin account creation
+      - Feedback forms, regular check-ins, usage analytics
+      - Track: user adoption, test completion rates, performance
+      - User guides, video tutorials, FAQ documentation
+      - Clear pilot terms, feature limitations, support boundaries
+      - Criteria: stable usage, positive feedback, payment commitment
+
+  v4.1: Multi-Organization Support (User & Data Isolation)
+    questions:
+      - How should organizations be structured?
+      - What data isolation mechanisms are needed?
+      - How should user management work across orgs?
+      - What admin capabilities per organization?
+      - How should billing be handled?
+      - What migration path from single-org?
+    answers:
+      - Organization model with hierarchical structure
+      - Row-level security, organization-scoped queries
+      - Users belong to organizations, role-based access
+      - Org admins manage users, tests, settings within org
+      - Per-organization billing, usage tracking
+      - Migration script to assign existing data to default org
+    industry_solution:
+      - SALESFORCE APPROACH: Multi-tenant architecture with shared schema
+      - ORG MEMBERSHIP: Users can belong to multiple organizations via membership table
+      - PERMISSION MODEL: Role-based permissions scoped to organizations
+      - DATA ISOLATION: All queries filtered by organization context automatically
+      - BILLING: Per-organization usage tracking with aggregated billing
+      - ADMIN HIERARCHY: System Admin → Org Admin → Teachers → Students
+      - IMPLEMENTATION: Use django-tenant-schemas or custom middleware
+    notes:
+      - RESOLVED: Built from v0.1 if organization field added to all models
+      - INDUSTRY PATTERN: Proven multi-tenant SaaS architecture
+      - SCALABILITY: Supports enterprise-level organization management
+
+  v4.2: White-labeled Branding (Logo, Theme, Domain)
+    questions:
+      - What branding elements can be customized?
+      - How should theme management work?
+      - What domain configuration options?
+      - How should assets be managed?
+      - What preview capabilities are needed?
+      - How should branding inheritance work?
+    answers:
+      - Logo, colors, fonts, custom CSS, email templates
+      - Theme settings per organization, CSS variable overrides
+      - Custom domain mapping, SSL certificate management
+      - File storage for logos, upload management interface
+      - Live preview of theme changes before applying
+      - Organization themes override global defaults
+
+  v4.3: Admin Usage and Audit Logs
+    questions:
+      - What admin actions should be logged?
+      - How should audit trails be displayed?
+      - What search and filter capabilities?
+      - How should log retention be managed?
+      - What compliance features are needed?
+      - How should log export work?
+    answers:
+      - Log: user actions, data changes, admin operations, logins
+      - Chronological table with action, user, timestamp, details
+      - Search by user, action type, date range
+      - Configurable retention periods, automatic cleanup
+      - Immutable logs, digital signatures for compliance
+      - Export to CSV, PDF for audit purposes
+
+  v4.4: Internal Messaging (Student ↔ Teacher Chat)
+    questions:
+      - What messaging features are needed?
+      - How should conversations be organized?
+      - Should there be group messaging?
+      - What notification preferences?
+      - How should message history be managed?
+      - What moderation capabilities?
+    answers:
+      - Basic text messaging, file attachments, read receipts
+      - Organize by test/course, conversation threads
+      - Group messaging for class announcements
+      - Email notifications, in-app notifications
+      - Persistent message history, search capabilities
+      - Message reporting, content filtering, admin oversight
+
+  v4.5: Email Verification & Forgot Password Flow
+    questions:
+      - What verification process should be used?
+      - How should password reset work?
+      - What security measures are needed?
+      - How should email templates be managed?
+      - What rate limiting should be applied?
+      - How should expired tokens be handled?
+    answers:
+      - Email verification with unique token on registration
+      - Password reset via email with secure token link
+      - Tokens expire after 24 hours, one-time use only
+      - Django email templates with customizable content
+      - Rate limiting: 3 requests per 15 minutes per email
+      - Expired tokens show clear error message, offer new request
+
+# ARCHITECTURE SUMMARY
+# This specification follows industry-proven patterns from major LMS platforms
+
+core_architecture:
+  technology_stack:
+    - Django + PostgreSQL + Bootstrap (until v3.6)
+    - Redis + Celery (v3.6+)
+    - Multi-tenant ready from v0.1
+  
+  data_models:
+    - User → Profile → Enrollment → Course/Class → Test → TestAttempt → Answer
+    - Organization field in all models for multi-tenancy
+    - TestAttempt as central state management
+  
+  access_control:
+    - Enrollment-based discovery (primary)
+    - Access code fallback (secondary)
+    - Role-based permissions (Students/Teachers)
+    - Teacher controls result release timing
+  
+  scalability_features:
+    - Multi-organization support
+    - Session state persistence
+    - Violation management policies
+    - Question randomization
+    - Caching and async processing
+
+development_principles:
+  - MVP first, enterprise features later
+  - Industry-standard solutions over custom
+  - Proven LMS patterns (Canvas/Blackboard/Moodle)
+  - Django+PostgreSQL+Bootstrap core stack
+  - External dependencies only when necessary
+
+key_differentiators:
+  - Behavior tracking and proctoring
+  - Flexible attempt management
+  - Industrial-grade session recovery
+  - Multi-tenant architecture from day one
+  - Professional invitation and enrollment system
