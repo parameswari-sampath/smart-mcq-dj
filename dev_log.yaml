@@ -151,6 +151,12 @@ prompt_log:
       - sessions/ -> test_sessions/
     status: v0.1_completed
 
+  - prompt_id: 11
+    date: 2025-01-10
+    user_request: Start v0.2
+    action: Cannot start v0.2 - must push v0.1 to GitHub first according to rules.yaml
+    status: blocked_pending_github_push
+
 current_setup:
   database:
     type: PostgreSQL
