@@ -1,3 +1,28 @@
 from django.contrib import admin
+from .models import Question, Choice
 
-# Register your models here.
+
+class ChoiceInline(admin.TabularInline):
+    model = Choice
+    extra = 0
+    min_num = 4
+    max_num = 4
+
+
+@admin.register(Question)
+class QuestionAdmin(admin.ModelAdmin):
+    list_display = ['title', 'category', 'difficulty', 'organization', 'created_by', 'created_at', 'is_active']
+    list_filter = ['difficulty', 'category', 'organization', 'is_active']
+    search_fields = ['title', 'description', 'category']
+    readonly_fields = ['created_at', 'updated_at']
+    inlines = [ChoiceInline]
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(is_active=True)
+
+
+@admin.register(Choice)
+class ChoiceAdmin(admin.ModelAdmin):
+    list_display = ['question', 'label', 'text', 'is_correct']
+    list_filter = ['label', 'is_correct']
+    search_fields = ['question__title', 'text']

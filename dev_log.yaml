@@ -1,12 +1,12 @@
 project: Smart MCQ Platform
 started: 2025-01-10
-current_version: v0.2
+current_version: v0.3
 tech_stack: Django + PostgreSQL + Bootstrap
 
 version_progress:
   v0.1_project_setup: completed
   v0.2_authentication: completed
-  v0.3_question_bank: pending
+  v0.3_question_bank: completed
   v0.4_test_bank: pending
   v0.5_test_sessions: pending
   v0.6_student_access: pending
@@ -215,6 +215,63 @@ prompt_log:
       - templates/accounts/student_dashboard.html
       - templates/accounts/teacher_dashboard.html
       - dev_log.yaml
+
+  - prompt_id: 16
+    date: 2025-01-10
+    user_request: Start v0.3 Question Bank CRUD for Teachers
+    action: Started v0.3 implementation - created Question and Choice models with organization support, implemented CRUD views for teachers only
+    files_created:
+      - questions/models.py (Question and Choice models)
+    files_modified:
+      - questions/views.py (CRUD operations for teachers)
+      - dev_log.yaml
+    models_created:
+      - Question: title, description, category, difficulty, image, organization, created_by, timestamps
+      - Choice: Fixed 4 choices (A,B,C,D) per question with is_correct flag
+    features_implemented:
+      - Teacher-only access decorator
+      - Organization-scoped question management
+      - CRUD operations: list, create, edit, delete (soft delete)
+      - Image upload support for questions
+    status: v0.3_models_and_views_ready
+
+  - prompt_id: 17
+    date: 2025-01-10
+    user_request: Continue v0.3 - complete templates and functionality
+    action: Completed v0.3 Question Bank CRUD implementation with all templates, admin interface, and testing
+    files_created:
+      - templates/questions/question_form.html (create/edit form)
+      - templates/questions/question_confirm_delete.html (delete confirmation)
+      - questions/migrations/0001_initial.py (database migrations)
+    files_modified:
+      - templates/accounts/teacher_dashboard.html (added question management link)
+      - questions/admin.py (admin interface with inline choices)
+      - dev_log.yaml
+    dependencies_added:
+      - pillow==11.3.0 (for ImageField support)
+    migrations_applied:
+      - questions.0001_initial (Question and Choice models)
+    features_completed:
+      - Complete CRUD templates with Bootstrap styling
+      - Django admin interface with inline choice editing
+      - Teacher dashboard integration
+      - Image upload support for questions
+      - Database migrations and schema creation
+    status: v0.3_completed
+
+  - prompt_id: 18
+    date: 2025-01-10
+    user_request: Add sample placeholders to create new question form
+    action: Added helpful placeholder text to all form fields to guide teachers
+    files_modified:
+      - templates/questions/question_form.html
+      - dev_log.yaml
+    improvements:
+      - Added example question title placeholder
+      - Added category examples (Geography, Science)
+      - Added detailed description placeholder
+      - Added realistic choice examples (Paris, London, Berlin, Madrid)
+    status: v0.3_enhanced
 
 current_setup:
   database:

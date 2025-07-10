@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if question %}Edit Question{% else %}Create Question{% endif %} - Smart MCQ{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>{% if question %}Edit Question{% else %}Create New Question{% endif %}</h2>
+            <a href="{% url 'question_list' %}" class="btn btn-secondary">Back to Question Bank</a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <!-- Question Details -->
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="title" class="form-label">Question Title *</label>
+                            <input type="text" class="form-control" id="title" name="title" 
+                                   value="{{ question.title|default:'' }}" required maxlength="500"
+                                   placeholder="e.g., What is the capital of France?">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="category" class="form-label">Category</label>
+                            <input type="text" class="form-control" id="category" name="category" 
+                                   value="{{ question.category|default:'' }}" maxlength="100"
+                                   placeholder="e.g., Geography, Science">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="description" class="form-label">Question Description *</label>
+                            <textarea class="form-control" id="description" name="description" 
+                                      rows="4" required placeholder="Provide detailed question description or additional context here...">{{ question.description|default:'' }}</textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="difficulty" class="form-label">Difficulty *</label>
+                            <select class="form-select" id="difficulty" name="difficulty" required>
+                                <option value="">Select difficulty</option>
+                                <option value="easy" {% if question.difficulty == 'easy' %}selected{% endif %}>Easy</option>
+                                <option value="medium" {% if question.difficulty == 'medium' %}selected{% endif %}>Medium</option>
+                                <option value="hard" {% if question.difficulty == 'hard' %}selected{% endif %}>Hard</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="image" class="form-label">Question Image (optional)</label>
+                            <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                            {% if question.image %}
+                                <small class="text-muted">Current image: {{ question.image.name }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Answer Choices -->
+                    <h5 class="mb-3">Answer Choices</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <input type="radio" name="correct" value="A" 
+                                           {% if choices.0.is_correct or not question %}checked{% endif %} required>
+                                </span>
+                                <span class="input-group-text">A</span>
+                                <input type="text" class="form-control" name="choice_a" 
+                                       value="{{ choices.0.text|default:'' }}" placeholder="e.g., Paris" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <input type="radio" name="correct" value="B" 
+                                           {% if choices.1.is_correct %}checked{% endif %} required>
+                                </span>
+                                <span class="input-group-text">B</span>
+                                <input type="text" class="form-control" name="choice_b" 
+                                       value="{{ choices.1.text|default:'' }}" placeholder="e.g., London" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <input type="radio" name="correct" value="C" 
+                                           {% if choices.2.is_correct %}checked{% endif %} required>
+                                </span>
+                                <span class="input-group-text">C</span>
+                                <input type="text" class="form-control" name="choice_c" 
+                                       value="{{ choices.2.text|default:'' }}" placeholder="e.g., Berlin" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <input type="radio" name="correct" value="D" 
+                                           {% if choices.3.is_correct %}checked{% endif %} required>
+                                </span>
+                                <span class="input-group-text">D</span>
+                                <input type="text" class="form-control" name="choice_d" 
+                                       value="{{ choices.3.text|default:'' }}" placeholder="e.g., Madrid" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>Note:</strong> Select the radio button next to the correct answer choice.
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{% url 'question_list' %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            {% if question %}Update Question{% else %}Create Question{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
