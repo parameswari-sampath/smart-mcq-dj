@@ -4,7 +4,7 @@ current_version: v0.1
 tech_stack: Django + PostgreSQL + Bootstrap
 
 version_progress:
-  v0.1_project_setup: in_progress
+  v0.1_project_setup: completed
   v0.2_authentication: pending
   v0.3_question_bank: pending
   v0.4_test_bank: pending
@@ -136,6 +136,20 @@ prompt_log:
     action: Created .gitignore with Django, Python, uv, and development environment exclusions
     files_created:
       - .gitignore
+
+  - prompt_id: 10
+    date: 2025-01-10
+    user_request: Complete v0.1 - check if finished
+    action: Fixed app naming conflict (sessions -> test_sessions), ran migrations, tested setup, marked v0.1 as completed
+    files_modified:
+      - smart_mcq/settings.py
+      - test_sessions/apps.py
+      - dev_log.yaml
+    migrations_created:
+      - accounts/migrations/0001_initial.py
+    directories_renamed:
+      - sessions/ -> test_sessions/
+    status: v0.1_completed
 
 current_setup:
   database:

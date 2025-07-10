@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class SessionsConfig(AppConfig):
+class TestSessionsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'sessions'
+    name = 'test_sessions'
