@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Test Bank - Smart MCQ{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Test Bank</h2>
+            <a href="{% url 'test_create' %}" class="btn btn-primary">Create New Test</a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        {% if tests %}
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Test Title</th>
+                                    <th>Category</th>
+                                    <th>Questions</th>
+                                    <th>Time Limit</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for test in tests %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ test.title|truncatechars:50 }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ test.description|truncatechars:60 }}</small>
+                                    </td>
+                                    <td>
+                                        {% if test.category %}
+                                            <span class="badge bg-secondary">{{ test.category }}</span>
+                                        {% else %}
+                                            <span class="text-muted">No category</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ test.get_question_count }} questions</span>
+                                        <br>
+                                        <small class="text-muted">{{ test.get_total_marks }} marks</small>
+                                    </td>
+                                    <td>{{ test.time_limit_minutes }} min</td>
+                                    <td>{{ test.created_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'test_detail' test.pk %}" class="btn btn-outline-info">View</a>
+                                            <a href="{% url 'test_edit' test.pk %}" class="btn btn-outline-primary">Edit</a>
+                                            <a href="{% url 'test_delete' test.pk %}" class="btn btn-outline-danger">Delete</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5>No Tests Created Yet</h5>
+                    <p class="text-muted">Start building your test bank by creating your first test.</p>
+                    <a href="{% url 'test_create' %}" class="btn btn-primary">Create First Test</a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

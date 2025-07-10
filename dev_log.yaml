@@ -1,13 +1,13 @@
 project: Smart MCQ Platform
 started: 2025-01-10
-current_version: v0.3
+current_version: v0.4
 tech_stack: Django + PostgreSQL + Bootstrap
 
 version_progress:
   v0.1_project_setup: completed
   v0.2_authentication: completed
   v0.3_question_bank: completed
-  v0.4_test_bank: pending
+  v0.4_test_bank: completed
   v0.5_test_sessions: pending
   v0.6_student_access: pending
 
@@ -272,6 +272,39 @@ prompt_log:
       - Added detailed description placeholder
       - Added realistic choice examples (Paris, London, Berlin, Madrid)
     status: v0.3_enhanced
+
+  - prompt_id: 19
+    date: 2025-01-10
+    user_request: Start v0.4 Test Bank CRUD for Teachers
+    action: Completed v0.4 implementation - created Test model with question selection, implemented CRUD views and templates, admin interface
+    files_created:
+      - tests/models.py (Test model with ManyToMany to Question)
+      - tests/views.py (CRUD operations for teachers)
+      - tests/urls.py (URL routing)
+      - templates/tests/test_list.html (test listing)
+      - templates/tests/test_form.html (create/edit form with question selection)
+      - templates/tests/test_detail.html (test details with questions)
+      - templates/tests/test_confirm_delete.html (delete confirmation)
+      - tests/migrations/0001_initial.py (database migrations)
+    files_modified:
+      - smart_mcq/urls.py (added tests URLs)
+      - templates/accounts/teacher_dashboard.html (added test management link)
+      - tests/admin.py (admin interface with filter_horizontal for questions)
+      - dev_log.yaml
+    models_created:
+      - Test: title, description, time_limit_minutes, category, questions (ManyToMany), organization, created_by, timestamps
+    features_implemented:
+      - Teacher-only Test CRUD operations
+      - Question selection via checkboxes with JavaScript functionality
+      - Organization-scoped test management
+      - Test detail view showing all questions with correct answers
+      - Time limit configuration
+      - Soft delete functionality
+      - Django admin interface
+      - Bootstrap styling with question count and marks display
+    migrations_applied:
+      - tests.0001_initial (Test model)
+    status: v0.4_completed
 
 current_setup:
   database:

@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if test %}Edit Test{% else %}Create Test{% endif %} - Smart MCQ{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>{% if test %}Edit Test{% else %}Create New Test{% endif %}</h2>
+            <a href="{% url 'test_list' %}" class="btn btn-secondary">Back to Test Bank</a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <!-- Test Details -->
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="title" class="form-label">Test Title *</label>
+                            <input type="text" class="form-control" id="title" name="title" 
+                                   value="{{ test.title|default:'' }}" required maxlength="200"
+                                   placeholder="e.g., Geography Quiz - World Capitals">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="category" class="form-label">Category</label>
+                            <input type="text" class="form-control" id="category" name="category" 
+                                   value="{{ test.category|default:'' }}" maxlength="100"
+                                   placeholder="e.g., Geography, Science">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="description" class="form-label">Test Description *</label>
+                            <textarea class="form-control" id="description" name="description" 
+                                      rows="3" required placeholder="Describe the test purpose and coverage...">{{ test.description|default:'' }}</textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="time_limit_minutes" class="form-label">Time Limit (Minutes) *</label>
+                            <input type="number" class="form-control" id="time_limit_minutes" name="time_limit_minutes" 
+                                   value="{{ test.time_limit_minutes|default:60 }}" required min="1" max="300"
+                                   placeholder="60">
+                        </div>
+                    </div>
+
+                    <!-- Question Selection -->
+                    <h5 class="mb-3">Select Questions</h5>
+                    {% if available_questions %}
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="selectAll">
+                                                    <label class="form-check-label" for="selectAll">
+                                                        <strong>Select All Questions</strong>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6 text-end">
+                                                <span class="badge bg-info" id="selectedCount">0 selected</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            {% for question in available_questions %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="form-check">
+                                                <input class="form-check-input question-checkbox" type="checkbox" 
+                                                       name="questions" value="{{ question.pk }}" id="question_{{ question.pk }}"
+                                                       {% if test and question in test.questions.all %}checked{% endif %}>
+                                                <label class="form-check-label" for="question_{{ question.pk }}">
+                                                    <strong>{{ question.title|truncatechars:50 }}</strong>
+                                                </label>
+                                            </div>
+                                            <small class="text-muted d-block mt-2">
+                                                {{ question.description|truncatechars:80 }}
+                                            </small>
+                                            <div class="mt-2">
+                                                {% if question.category %}
+                                                    <span class="badge bg-secondary me-1">{{ question.category }}</span>
+                                                {% endif %}
+                                                <span class="badge 
+                                                    {% if question.difficulty == 'easy' %}bg-success
+                                                    {% elif question.difficulty == 'medium' %}bg-warning
+                                                    {% else %}bg-danger{% endif %}">
+                                                    {{ question.get_difficulty_display }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <h6>No Questions Available</h6>
+                            <p>You need to create questions first before creating a test.</p>
+                            <a href="{% url 'question_create' %}" class="btn btn-primary btn-sm">Create Questions</a>
+                        </div>
+                    {% endif %}
+
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="{% url 'test_list' %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            {% if test %}Update Test{% else %}Create Test{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const questionCheckboxes = document.querySelectorAll('.question-checkbox');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    function updateSelectedCount() {
+        const checked = document.querySelectorAll('.question-checkbox:checked').length;
+        selectedCount.textContent = checked + ' selected';
+    }
+    
+    selectAllCheckbox.addEventListener('change', function() {
+        questionCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        updateSelectedCount();
+    });
+    
+    questionCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedCount);
+    });
+    
+    // Initial count
+    updateSelectedCount();
+});
+</script>
+{% endblock %}
