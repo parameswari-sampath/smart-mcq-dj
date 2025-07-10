@@ -10,11 +10,30 @@
                 <h4 class="mb-0">Login</h4>
             </div>
             <div class="card-body">
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        <strong>Login Failed!</strong>
+                        {% for error in form.non_field_errors %}
+                            <br>{{ error }}
+                        {% endfor %}
+                    </div>
+                {% elif form.errors %}
+                    <div class="alert alert-danger">
+                        <strong>Login Failed!</strong>
+                        {% for field, errors in form.errors.items %}
+                            {% for error in errors %}
+                                <br>{{ error }}
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
                 <form method="post">
                     {% csrf_token %}
                     <div class="mb-3">
                         <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control" name="username" required>
+                        <input type="text" class="form-control" name="username" 
+                               value="{{ form.username.value|default:'' }}" required>
                     </div>
                     <div class="mb-3">
                         <label for="password" class="form-label">Password</label>

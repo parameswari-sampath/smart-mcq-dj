@@ -306,6 +306,20 @@ prompt_log:
       - tests.0001_initial (Test model)
     status: v0.4_completed
 
+  - prompt_id: 20
+    date: 2025-01-10
+    user_request: Fix login error messages - no warning shown for wrong credentials
+    action: Added form error handling to login template to display authentication failures
+    files_modified:
+      - templates/accounts/login.html
+      - dev_log.yaml
+    fixes_applied:
+      - Added form.errors and form.non_field_errors display in login template
+      - Added Bootstrap alert styling for error messages
+      - Preserved username value on form submission errors
+      - Ensured CustomLoginView (which extends Django's LoginView) properly passes form context
+    status: login_errors_fixed
+
 current_setup:
   database:
     type: PostgreSQL
