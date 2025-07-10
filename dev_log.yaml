@@ -320,6 +320,34 @@ prompt_log:
       - Ensured CustomLoginView (which extends Django's LoginView) properly passes form context
     status: login_errors_fixed
 
+  - prompt_id: 21
+    date: 2025-01-10
+    user_request: Update version.yaml with tests section for each version to prevent errors
+    action: Added comprehensive tests section to v0.2, v0.3, and v0.4 in version.yaml
+    files_modified:
+      - version.yaml
+      - dev_log.yaml
+    tests_added:
+      v0.2_authentication:
+        - Login/logout functionality tests
+        - Error message validation
+        - Role-based access tests
+        - Registration and profile creation
+      v0.3_question_bank:
+        - Question CRUD operations
+        - Choice management (4 choices, 1 correct)
+        - Teacher-only access validation
+        - Image upload support
+        - Form placeholder verification
+      v0.4_test_bank:
+        - Test CRUD operations
+        - Question selection via checkboxes
+        - JavaScript functionality tests
+        - Teacher-only access validation
+        - Test detail view verification
+    purpose: Prevent bugs by having clear test criteria before version completion
+    status: test_criteria_added
+
 current_setup:
   database:
     type: PostgreSQL

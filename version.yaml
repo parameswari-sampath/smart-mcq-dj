@@ -21,6 +21,19 @@ versions:
       - SCALABILITY: Design for multi-tenancy from start (organization_id in all models)
       - STATE MANAGEMENT: TestAttempt tracks all session state and progress
       - IMPLEMENTATION: Add organization field to all major models immediately
+    tests:
+      - Django project creates successfully with all specified apps
+      - PostgreSQL connection establishes with configured credentials
+      - Static files serve correctly from /static/ URL
+      - Media files serve correctly from /media/ URL
+      - Bootstrap CDN loads properly in base template
+      - All apps (accounts, questions, tests, sessions) are properly configured
+      - Database migrations run without errors
+      - Admin interface is accessible
+      - Debug mode works and shows detailed error pages
+      - Base template renders with proper Bootstrap styling
+      - Organization model created with required fields
+      - All models include organization_id field for multi-tenancy
     notes:
       - ARCHITECTURE: Based on proven LMS patterns used by millions
       - FUTURE-PROOF: Multi-tenant ready from day one
@@ -45,6 +58,15 @@ versions:
       - ALTERNATIVE: Consider custom User model with role field for v1.4+ optimization
       - Profile approach chosen for MVP to avoid User model complexity early on
       - Role-based access is central to app logic, evaluate custom User in future versions
+    tests:
+      - Login with valid credentials (student and teacher)
+      - Login with invalid credentials shows error message (single, not duplicate)
+      - Logout functionality works properly
+      - Registration creates user with correct role and group
+      - Role-based dashboard redirection works
+      - Teacher and student can access their respective dashboards
+      - Logged-in users cannot access login/register pages
+      - Profile creation with organization assignment
 
   v0.3: Question Bank (CRUD for Teacher)
     questions:
@@ -67,6 +89,17 @@ versions:
       - FUTURE: Convert category CharField to ManyToMany Tag model in v3.5
       - Current simple approach supports basic categorization for MVP
       - Tag system must be flexible for question pooling in advanced versions
+    tests:
+      - Teacher can create questions with title, description, category, difficulty
+      - Question creation requires exactly 4 choices (A, B, C, D)
+      - Only one choice can be marked as correct
+      - Questions support image upload
+      - Teacher can edit existing questions and choices
+      - Teacher can delete questions (soft delete)
+      - Question list shows all organization questions
+      - Only teachers can access question management
+      - Students cannot access question CRUD operations
+      - Question form has helpful placeholders
 
   v0.4: Test Bank (Assemble test with selected questions)
     questions:
@@ -85,6 +118,18 @@ versions:
       - No templates for MVP, each test is unique
       - Questions displayed in order added, no reordering for MVP
       - Simple category CharField like questions
+    tests:
+      - Teacher can create tests with title, description, time limit, category
+      - Test creation allows selecting questions via checkboxes
+      - "Select All" functionality works for question selection
+      - Test list shows question count and time limit
+      - Test detail view displays all selected questions with correct answers
+      - Teacher can edit tests and modify question selection
+      - Teacher can delete tests (soft delete)
+      - Only teachers can access test management
+      - Students cannot access test CRUD operations
+      - Test bank accessible from teacher dashboard
+      - JavaScript selection counter works properly
 
   v0.5: Test Session Scheduling (Schedule time + generate access code)
     questions:
@@ -103,6 +148,23 @@ versions:
       - Simple edit form for rescheduling (teacher only)
       - Use Django's timezone settings, default to server timezone for MVP
       - Expired sessions show 'Session Expired' message, no access allowed
+    tests:
+      - TestSession model creates with all required fields
+      - Access code generation produces 6-digit alphanumeric codes
+      - Start and end datetime fields save correctly
+      - Teacher can schedule sessions with proper date/time selection
+      - Access codes are unique across all active sessions
+      - Session rescheduling updates dates correctly
+      - Timezone handling works with server default settings
+      - Expired sessions block student access appropriately
+      - Session creation form validates date/time inputs
+      - Duration calculation includes test time limit
+      - Only teachers can create and manage test sessions
+      - Session listing shows all scheduled sessions
+      - Access code security prevents easy guessing
+      - Session model maintains relationship to test and creator
+      - Multiple sessions per test supported correctly
+      - Session expiration logic prevents late access
     notes:
       - CRITICAL: Students never access Test directly, only via TestSession
       - Access control: TestSession.access_code is the ONLY student entry point
@@ -124,6 +186,19 @@ versions:
       - Separate sections with Bootstrap cards for each status
       - Actions: 'Join Test' (upcoming/ongoing), 'View Results' (completed)
       - No search/filter for MVP, simple chronological listing
+    tests:
+      - Access code input field validates 6-character alphanumeric codes
+      - Invalid access codes show appropriate error messages
+      - Valid access codes redirect to test session
+      - Test sessions outside time window show 'not available' message
+      - Student dashboard displays upcoming tests with proper status
+      - Ongoing tests show 'Join Test' button
+      - Completed tests show 'View Results' button
+      - Test cards display correct information (title, time, teacher)
+      - Status indicators show correct colors (blue/green/gray)
+      - Students cannot access expired test sessions
+      - Access code is case-insensitive
+      - Dashboard refreshes test status appropriately
     notes:
       - LOGICAL ISSUE: How do students know which tests they can take?
       - MISSING: Student enrollment/assignment to tests mechanism
@@ -147,6 +222,23 @@ versions:
       - Simple progress bar at bottom showing completed questions
       - Bootstrap buttons: 'Previous' (secondary), 'Next' (primary)
       - No keyboard shortcuts for MVP, focus on mouse/touch interaction
+    tests:
+      - Test interface displays one question at a time
+      - Question counter shows correct format 'Question X of Y'
+      - Answer options display as radio buttons with clear labels
+      - Answer selection saves immediately via AJAX
+      - Progress bar updates when questions are answered
+      - Previous button navigates to previous question
+      - Next button advances to next question
+      - Previous button disabled on first question
+      - Selected answers persist when navigating between questions
+      - AJAX save shows success/error feedback
+      - Test session state maintains across page refresh
+      - TestAttempt model tracks current question and progress
+      - Navigation buttons have appropriate Bootstrap styling
+      - Mobile interface works properly on touch devices
+      - Answer persistence works without JavaScript enabled
+      - Session recovery works after browser crash
     notes:
       - DEPENDENCY MISSING: Need TestAttempt model to track student progress
       - LOGICAL GAP: Where is test session state stored during attempt?
@@ -168,6 +260,23 @@ versions:
       - Auto-submit via JavaScript form submission when timer reaches zero
       - Show retry message with manual submit button if auto-submit fails
       - Timer visible on all test pages, hidden on result pages
+    tests:
+      - Countdown timer displays at top-right corner
+      - Timer shows correct format (MM:SS)
+      - Timer counts down in real-time
+      - 5-minute warning alert appears
+      - 1-minute warning alert appears
+      - Timer turns red in final minute
+      - Auto-submit triggers when timer reaches zero
+      - Auto-submit works even if user is idle
+      - Manual submit button appears if auto-submit fails
+      - Timer persists across page navigation
+      - Timer resumes correctly after browser refresh
+      - Warning alerts don't block test interaction
+      - Timer synchronization with server time
+      - Multiple warning alerts don't stack
+      - Auto-submit prevents further answer changes
+      - Timer stops after manual submission
 
   v1.2: Test Submission and Instant Evaluation
     questions:
@@ -190,6 +299,23 @@ versions:
       - Additional fields: selected_option, time_spent_seconds
       - This data structure supports behavior tracking in v1.5-v1.7
       - Answer model: student, question, test_session, selected_option, is_correct, answered_at
+    tests:
+      - Submission confirmation modal displays unanswered questions
+      - 'Are you sure?' confirmation prevents accidental submission
+      - Evaluation calculates correct vs incorrect answers
+      - Scoring follows 1 point per correct answer rule
+      - Unanswered questions count as incorrect (0 points)
+      - Submission summary shows answered question count
+      - Instant redirect to results page after submission
+      - Answer model stores all required fields correctly
+      - Multiple submission attempts are prevented
+      - Submission timestamp recorded accurately
+      - Partial submissions handle incomplete data
+      - Score calculation includes time spent data
+      - Results available immediately after submission
+      - Submission confirmation shows final score
+      - Database transactions maintain data integrity
+      - Concurrent submissions handled properly
 
   v1.3: Student Result View (Score + correct vs selected)
     questions:
@@ -211,6 +337,23 @@ versions:
       - DECISION NEEDED: Should correct answers be revealed immediately or delayed?
       - TEACHER CONTROL: Need setting to control when students see correct answers
       - CONSIDERATION: Some teachers may want to review before revealing answers
+    tests:
+      - Results page displays total score and percentage
+      - Pass/fail status shows based on test criteria
+      - Correct answers marked with green checkmarks
+      - Incorrect answers marked with red X symbols
+      - Pie chart displays correct vs incorrect distribution
+      - Question breakdown shows student vs correct answers
+      - Full question review available with answer highlighting
+      - Results page loads quickly with proper formatting
+      - Answer comparison clearly distinguishes choices
+      - Percentage calculation matches score display
+      - Chart.js pie chart renders correctly
+      - Student can access results multiple times
+      - Results display is mobile-responsive
+      - Question images display properly in review
+      - Answer choice labels (A,B,C,D) are clear
+      - Results cannot be modified by students
 
   v1.4: Teacher Result View (Student answers & score)
     questions:
@@ -227,6 +370,23 @@ versions:
       - Click student name to view detailed answer breakdown
       - No export for MVP (implement in v2.5)
       - No comparison features for MVP, just individual results
+    tests:
+      - Teacher dashboard shows all student results in table
+      - Table columns display name, score, percentage, completion time
+      - Sorting works by name, score, and completion time
+      - Student name links to detailed answer breakdown
+      - Basic statistics show average, highest, lowest scores
+      - Completion rate calculation displays correctly
+      - Individual student results show all question details
+      - Teacher can view which answers student selected
+      - Detailed view shows time spent per question
+      - Results table paginates for large classes
+      - Filter by completion status works
+      - Score formatting displays consistently
+      - Teacher cannot modify student scores
+      - Results update in real-time as students submit
+      - Detailed breakdown includes question text
+      - Statistics exclude incomplete attempts
 
   v1.5: Tab Switch Tracking and Focus Loss Detection
     questions:
@@ -250,6 +410,23 @@ versions:
       - GRACE PERIOD: Brief window to return focus before counting violation
       - APPEAL PROCESS: Students can add notes explaining violations
       - IMPLEMENTATION: Add proctoring_settings JSON field to Test model
+    tests:
+      - Tab switch events are detected and logged
+      - Window blur/focus events trigger properly
+      - Page unload events are captured
+      - Warning modal displays on tab switch
+      - Violation counter increments correctly
+      - Teacher results show violation counts per student
+      - Multiple violations escalate warning severity
+      - Timestamp logging works for all events
+      - Violations persist across browser refresh
+      - Warning modal doesn't interfere with test taking
+      - Event logging works in different browsers
+      - Violation data displays in teacher dashboard
+      - Real-time violation detection responds quickly
+      - Auto-submit triggers on excessive violations
+      - Student appeal notes are saved correctly
+      - Proctoring settings apply per test session
 
   v1.6: Time Tracking Per Question (Start-End duration capture)
     questions:
@@ -266,6 +443,23 @@ versions:
       - Simple table showing average time per question for teachers
       - Basic analytics: fastest/slowest questions, time distribution
       - No complex insights for MVP, just raw timing data
+    tests:
+      - Question start time captured when question loads
+      - Question end time captured on navigation
+      - Duration calculation accurate for each question
+      - Time tracking works across page refresh
+      - Idle time detection pauses timer
+      - Teacher report shows average time per question
+      - Timing analytics display fastest/slowest questions
+      - Time distribution chart renders correctly
+      - Individual student timing data available
+      - Total test time calculation matches sum
+      - Time tracking resilient to browser issues
+      - Timing data exports correctly
+      - Zero-time questions handled appropriately
+      - Time data visualization is clear
+      - Performance insights help identify problem questions
+      - Timing data maintains student privacy
 
   v1.7: Behavior Log Viewer for Teachers/Admin
     questions:
@@ -282,6 +476,23 @@ versions:
       - No pattern analysis for MVP, just raw event listing
       - Highlight rows with high violation counts (3+ tab switches)
       - No export for MVP, teacher can view in browser only
+    tests:
+      - Behavior log displays all tracked events
+      - Log table shows student, event type, timestamp
+      - Search by student name functions correctly
+      - Filter by event type works properly
+      - High violation counts highlighted in red
+      - Chronological sorting of events
+      - Log entries cannot be modified
+      - Pagination handles large log volumes
+      - Event details show complete context
+      - Suspicious activity clearly marked
+      - Log viewing restricted to authorized teachers
+      - Real-time log updates as events occur
+      - Log data integrity maintained
+      - Clear event descriptions for non-technical users
+      - Log retention follows defined policies
+      - Admin oversight of all behavior logs
 
   v2.0: Question Navigator (Jump to Q1-Q10)
     questions:
@@ -298,6 +509,23 @@ versions:
       - Yes, click any number to jump directly to that question
       - Independent of Next/Previous flow, allows free navigation
       - No flagging indicators for MVP (implement in v2.1)
+    tests:
+      - Question navigator displays horizontal button row
+      - Answered questions show green button styling
+      - Unanswered questions show gray button styling
+      - Direct jump to question works from any button
+      - Navigator position updates with current question
+      - Navigation independent of Next/Previous buttons
+      - Button numbers display correctly (1, 2, 3...)
+      - Navigator responsive on mobile devices
+      - Current question highlighted in navigator
+      - Bootstrap button styling applies consistently
+      - Navigator updates immediately on answer selection
+      - Jump navigation preserves answer state
+      - Navigator accessible via keyboard navigation
+      - Question count matches total test questions
+      - Navigator layout doesn't break with many questions
+      - Visual feedback clear for answered/unanswered states
 
   v2.1: Mark for Review Feature
     questions:
@@ -314,6 +542,23 @@ versions:
       - Yes, checkbox can be toggled on/off
       - Show 'X questions marked for review' reminder before submission
       - Save review status in database with each answer
+    tests:
+      - 'Mark for Review' checkbox displays below questions
+      - Checkbox toggle saves review status immediately
+      - Star icon appears on navigator for marked questions
+      - 'Review List' button shows all marked questions
+      - Review status persists across navigation
+      - Submission reminder shows review count
+      - Review marks can be toggled on/off
+      - Review list updates in real-time
+      - Star icons display consistently
+      - Review status saves via AJAX
+      - Multiple questions can be marked simultaneously
+      - Review list accessible from all test pages
+      - Review reminder appears before final submission
+      - Review marks survive browser refresh
+      - Unmarking removes star from navigator
+      - Review functionality works on mobile devices
 
   v2.2: Explanation and Feedback per Question
     questions:
@@ -330,6 +575,23 @@ versions:
       - No personalization for MVP, same explanation for all students
       - No external links for MVP, self-contained explanations
       - Teacher responsibility to write quality explanations, no validation
+    tests:
+      - Explanation field added to Question model
+      - Teachers can enter explanations during question creation
+      - Explanations display in student results view
+      - Explanation text formatting preserved (line breaks)
+      - Students see explanations only after submission
+      - Explanations show for both correct and incorrect answers
+      - No multimedia validation enforced
+      - Question edit form includes explanation field
+      - Explanation field is optional (not required)
+      - Explanations display with proper styling
+      - Long explanations format appropriately
+      - Teacher can update explanations for existing questions
+      - Explanation visibility controlled per question
+      - Students cannot edit or modify explanations
+      - Explanations enhance learning after test completion
+      - Quality improvement depends on teacher input
 
   v2.3: Student Dashboard (Upcoming, Ongoing, Completed Tests)
     questions:
@@ -346,6 +608,23 @@ versions:
       - Simple alert banners for notifications (no real-time)
       - Actions: 'Start Test', 'View Results', 'Details'
       - No achievement tracking for MVP, just test history
+    tests:
+      - Three card sections display for different test states
+      - Test information shows title, date, duration, teacher
+      - Status indicators use correct colors (blue/green/gray)
+      - 'Start Test' button available for ongoing tests
+      - 'View Results' button available for completed tests
+      - Test cards display chronologically
+      - Mobile responsive card layout
+      - Test status updates automatically
+      - Dashboard loads quickly with multiple tests
+      - Alert banners show important notifications
+      - Quick actions work from dashboard
+      - Test details accessible from cards
+      - Dashboard refreshes test status appropriately
+      - No calendar integration (list view only)
+      - Student cannot access other students' tests
+      - Dashboard personalizes content per student
 
   v2.4: Invite Students via Email or Code
     questions:
@@ -373,6 +652,23 @@ versions:
       - WORKFLOW RESOLVED: Enrollment system provides student contact info
       - PROFESSIONAL: Enterprise-grade invitation and reminder system
       - INTEGRATION: Works seamlessly with enrollment-based access control
+    tests:
+      - Email invitations send with all required information
+      - SMTP configuration works correctly
+      - Bulk email sending processes multiple addresses
+      - Email template formats properly
+      - Access codes included in email body
+      - Invalid email addresses handled gracefully
+      - Email sending doesn't block UI
+      - Invitation emails avoid spam folders
+      - Teacher can preview email before sending
+      - Email content includes test details clearly
+      - Multiple teachers can send invitations
+      - Email sending logs for tracking
+      - Bounce handling for failed deliveries
+      - Email templates maintain professional appearance
+      - Invitation workflow integrates with test scheduling
+      - Enrollment system provides contact information
 
   v2.5: CSV/PDF Export of Results
     questions:
@@ -393,6 +689,23 @@ versions:
       - DEPENDENCY ALERT: ReportLab is first external package beyond Django stack
       - Consider if PDF export is essential for MVP or can be delayed
       - Alternative: Start with CSV only, add PDF in later version
+    tests:
+      - CSV export includes all specified data fields
+      - ReportLab PDF generation produces readable reports
+      - Export handles large result datasets
+      - CSV format opens correctly in Excel
+      - PDF reports maintain consistent formatting
+      - Export files download properly
+      - File naming convention follows standard pattern
+      - Export permissions restricted to teachers
+      - Large exports don't timeout
+      - Export data accuracy matches dashboard
+      - PDF layout remains readable when printed
+      - CSV headers clearly identify columns
+      - Export includes timestamp for reference
+      - Multiple export formats available
+      - Export functionality accessible from results page
+      - File size reasonable for email sharing
 
   v2.6: Manual Scoring Support (Code & Subjective Answers)
     questions:
@@ -409,6 +722,23 @@ versions:
       - No collaborative grading for MVP, single teacher scores
       - Store original score, modified score, and modification timestamp
       - No code evaluation tools for MVP, teacher reviews code manually
+    tests:
+      - Manual scoring interface displays student answers clearly
+      - Teachers can assign decimal scores (0.5 out of 1.0)
+      - Score input validation prevents invalid values
+      - Partial credit calculations work correctly
+      - Grading history tracks original and modified scores
+      - Modification timestamps recorded for audit
+      - Score changes update total test score
+      - Manual grading accessible from teacher dashboard
+      - Multiple teachers can grade same test
+      - Grading interface shows question context
+      - Code answers display with syntax highlighting
+      - Subjective answers show full text responses
+      - Grading workflow maintains data integrity
+      - Students notified when manual grading complete
+      - Rubric suggestions provided for consistency
+      - Bulk grading operations for efficiency
 
   v2.7: Basic Email Notifications (Test Schedule, Result Alerts)
     questions:
@@ -430,6 +760,23 @@ versions:
       - v2.7 introduces timed tasks but v3.6 introduces async/Redis
       - RESOLUTION: Use simple cron job or django-crontab for v2.7
       - Migrate to Celery/Redis when implementing v3.6
+    tests:
+      - Email notification preferences save correctly
+      - Test invitation emails trigger on scheduling
+      - Reminder emails send 1 hour before test
+      - Results notification emails sent after grading
+      - Email templates render with proper formatting
+      - Notification preferences prevent unwanted emails
+      - Cron job scheduling works reliably
+      - Email delivery doesn't fail silently
+      - Multiple notification types can be configured
+      - Email content personalizes per recipient
+      - Notification timing respects timezone settings
+      - Email sending integrates with user preferences
+      - Digest functionality works if implemented
+      - Email customization maintains professional tone
+      - Notification system scales with user volume
+      - Email scheduling handles server downtime
 
   v2.8: Test Modes (Strict vs Practice)
     questions:
@@ -457,6 +804,23 @@ versions:
       - LOGIC RESOLVED: Multiple attempts = multiple TestAttempt records
       - STANDARD: Industry approach separates attempt types, not modes
       - FLEXIBILITY: Teachers control attempt limits and scoring policies
+    tests:
+      - Test mode selection radio buttons work correctly
+      - Strict mode enforces all violations and time limits
+      - Practice mode allows relaxed rules and unlimited attempts
+      - Mode affects auto-submit behavior appropriately
+      - Practice attempts don't count toward official grades
+      - Test session creation includes mode selection
+      - Mode settings apply consistently throughout test
+      - Violation detection differs between modes
+      - Timer behavior adapts to selected mode
+      - Results tracking separates practice vs graded attempts
+      - Multiple attempt functionality works in practice mode
+      - Attempt limits enforce correctly
+      - Scoring policies calculate per mode settings
+      - Mode configuration saves with test session
+      - Teacher can review attempts by mode type
+      - Industry-standard attempt management implemented
 
   v3.0: Coding Question Type (Python Editor + Test Cases)
     questions:
@@ -478,6 +842,23 @@ versions:
       - CONFLICT: Code execution complexity vs MVP simplicity
       - RECOMMENDATION: Consider this post-MVP unless critical for market
       - Alternative: Start with theoretical coding questions (text answers)
+    tests:
+      - CodeMirror editor loads with syntax highlighting
+      - Python syntax highlighting works correctly
+      - Test case definition interface accepts JSON format
+      - Code execution sandbox prevents system access
+      - Time and memory limits enforced during execution
+      - Function template provides starting code structure
+      - Test case results display pass/fail status
+      - Code submission saves student work
+      - Execution errors display helpful messages
+      - Docker containerization isolates code execution
+      - Multiple test cases run sequentially
+      - Code editor supports basic editing features
+      - Execution results integrate with scoring system
+      - Security measures prevent malicious code
+      - Performance monitoring tracks execution metrics
+      - Fallback to manual review if execution fails
 
   v3.1: Fill in the Blanks / Short Answer Type
     questions:
@@ -494,6 +875,23 @@ versions:
       - No auto-completion for MVP
       - Each blank scored separately, average for final score
       - Simple partial credit: correct blanks / total blanks
+    tests:
+      - Blank placeholders [BLANK1] parse correctly in questions
+      - Text input fields generate for each blank
+      - Select dropdown options display for choice blanks
+      - Answer validation performs case-insensitive matching
+      - Multiple blanks scored independently
+      - Partial credit calculation averages blank scores
+      - Blank numbering displays clearly to students
+      - Fill-in answers save automatically
+      - Question preview shows blank placement
+      - Teacher can define acceptable answer variations
+      - Short answer validation handles whitespace
+      - Blank types (text/select) configure per question
+      - Scoring shows which blanks correct/incorrect
+      - Mobile interface works for fill-in questions
+      - Answer review displays student vs correct responses
+      - Bulk blank creation tools for efficiency
 
   v3.2: Matching and Ordering Question Types
     questions:
@@ -510,10 +908,23 @@ versions:
       - Visual feedback with CSS hover states
       - Keep matching simple, 1-to-1 relationships only
       - Ensure keyboard navigation works for accessibility
-      - How should ordering questions be presented?
-      - Should there be visual feedback?
-      - How should complex matching be handled?
-      - What accessibility considerations?
+    tests:
+      - Drag and drop functionality works smoothly
+      - HTML5 drag API supports all modern browsers
+      - Matching items snap to target zones clearly
+      - Sortable lists respond to drag handles
+      - Visual feedback shows valid drop zones
+      - CSS hover states provide clear interaction cues
+      - Keyboard navigation works for accessibility
+      - Touch interface supports mobile drag/drop
+      - Matching validation ensures 1-to-1 relationships
+      - Order verification works for sequencing questions
+      - Drag operations don't interfere with page scrolling
+      - Answer state saves during drag operations
+      - Visual indicators show successful matches
+      - Error handling for invalid drag operations
+      - Matching interface scales with question complexity
+      - Alternative input methods for accessibility compliance
 
   v3.3: Question Randomization
     questions:
@@ -541,6 +952,23 @@ versions:
       - CONFLICT RESOLVED: Navigator shows position, not original question number
       - CONSISTENCY: Same student gets same order on resume
       - ANALYTICS: Full traceability for teacher review
+    tests:
+      - Question randomization checkbox toggles correctly
+      - Random question order generates per student
+      - Scoring remains consistent across randomized tests
+      - Question navigator shows position not original number
+      - Student gets same order on test resume
+      - Seed-based randomization ensures consistency
+      - Teacher reports show both original and randomized order
+      - Question mapping stores in TestAttempt model
+      - Randomization applies only when checkbox enabled
+      - Analytics track question performance regardless of order
+      - All students receive same questions in different order
+      - Randomization doesn't affect answer choices
+      - Question sequence generation works reliably
+      - Performance analytics account for randomization
+      - Teacher review shows student-specific question order
+      - Randomization enhances test security effectively
 
   v3.4: Answer Shuffling
     questions:
@@ -557,6 +985,23 @@ versions:
       - Different shuffle for each student
       - No special handling, all MCQ options treated equally
       - Analytics show original answer labels for consistency
+    tests:
+      - Answer options shuffle randomly for each student
+      - Original correct answer maps to shuffled position
+      - All MCQ options shuffle equally (A, B, C, D)
+      - Different students get different shuffle patterns
+      - Analytics display original answer labels consistently
+      - Shuffle configuration applies to all questions
+      - Answer key accuracy maintained through shuffling
+      - Student sees shuffled options in test interface
+      - Teacher reports show original option labels
+      - Shuffle state saves with student attempt
+      - Answer validation works with shuffled options
+      - Performance analytics normalize to original labels
+      - Shuffling doesn't affect question text or images
+      - Multiple choice scoring remains accurate
+      - Review interface shows student's shuffled view
+      - Answer shuffling enhances academic integrity
 
   v3.5: Question Pooling (Tag-Based Dynamic Test)
     questions:
@@ -573,6 +1018,23 @@ versions:
       - Equal weighting for MVP, no complex algorithms
       - Show warning if pool has insufficient questions
       - Basic analytics: questions per pool, usage statistics
+    tests:
+      - Question pools defined by category/tag system
+      - Tag-based selection creates dynamic tests
+      - Pool selection algorithm chooses randomly from pools
+      - Pool exhaustion warnings display when insufficient questions
+      - Equal weighting distributes questions fairly across pools
+      - Pool analytics show usage and performance statistics
+      - Tag system supports comma-separated multiple tags
+      - Dynamic test generation varies by student
+      - Pool requirements specification interface for teachers
+      - Question categorization supports pool creation
+      - Pool validation ensures minimum question counts
+      - Analytics track question effectiveness by pool
+      - Dynamic tests maintain consistent difficulty
+      - Pool management interface intuitive for teachers
+      - Tag-based filtering works in question bank
+      - Pool strategy balances coverage and randomization
 
   v3.6: Redis + Async Handling (High Load, Event Queue)
     questions:
@@ -589,6 +1051,23 @@ versions:
       - Simple TTL-based expiration, manual invalidation when needed
       - Basic monitoring: connection status, memory usage
       - Fallback to database if Redis unavailable
+    tests:
+      - Redis connection establishes successfully
+      - Question data caches with appropriate TTL
+      - User session data stores in Redis efficiently
+      - Test result caching improves response times
+      - Cache invalidation triggers on data changes
+      - Email queue processing works via Celery
+      - Result calculation tasks execute asynchronously
+      - File export operations queue properly
+      - Redis monitoring shows connection and memory status
+      - Graceful fallback to database when Redis down
+      - Cache hit rates improve application performance
+      - Session persistence works across server restarts
+      - Async task status tracking functions correctly
+      - Cache warming strategies load popular data
+      - Redis clustering supports high availability
+      - Performance metrics validate caching effectiveness
 
   v3.7: Batch Code Execution (Queued, Sandboxed)
     questions:
@@ -605,6 +1084,23 @@ versions:
       - Network isolation, read-only file system
       - Store results in database, notify via WebSocket
       - Monitor queue length, execution times, failure rates
+    tests:
+      - Code execution queues via Celery successfully
+      - Docker containers provide secure sandboxing
+      - CPU time limits prevent infinite loops
+      - Memory limits constrain resource usage
+      - Disk space limits prevent storage abuse
+      - Network isolation blocks external connections
+      - Read-only file system prevents file tampering
+      - Execution results store in database correctly
+      - WebSocket notifications inform of completion
+      - Queue monitoring tracks performance metrics
+      - Failed executions handled gracefully
+      - Execution timeout prevents hanging processes
+      - Resource monitoring prevents system overload
+      - Batch processing handles multiple submissions
+      - Security measures validated against common attacks
+      - Scalable execution supports concurrent users
 
   v3.8: Question & Option Caching
     questions:
@@ -621,6 +1117,23 @@ versions:
       - Monitor cache hit rates, response times
       - Fall back to database queries if cache misses
       - Pre-load popular questions and active tests
+    tests:
+      - Question caching improves load times significantly
+      - Cache keys follow consistent naming convention
+      - Cache invalidation triggers on question updates
+      - Test data caching reduces database queries
+      - User-specific cache entries partition correctly
+      - Cache performance monitoring shows hit rates
+      - Fallback queries work when cache misses
+      - Cache warming loads frequently accessed data
+      - Memory usage stays within acceptable limits
+      - Cache expiration policies prevent stale data
+      - Popular content identification works accurately
+      - Active test detection triggers appropriate caching
+      - Cache efficiency metrics guide optimization
+      - Multi-level caching strategy balances performance
+      - Cache coherency maintained across application servers
+      - Performance improvements measurable and significant
 
   v3.9: User Session Caching (Fast resume/load)
     questions:
@@ -637,6 +1150,23 @@ versions:
       - Allow single active session per user per test
       - Cleanup expired sessions daily
       - Encrypt sensitive session data, validate session tokens
+    tests:
+      - Session data caches current test state reliably
+      - Answer progress persists across browser refresh
+      - Time remaining calculation maintains accuracy
+      - Session restoration works after disconnection
+      - Cache miss rebuilds session from database
+      - Single active session limit enforced per user
+      - Expired session cleanup runs automatically
+      - Session encryption protects sensitive data
+      - Session token validation prevents hijacking
+      - Concurrent session handling prevents conflicts
+      - Session state includes all critical test data
+      - Fast session loading improves user experience
+      - Session security measures prevent tampering
+      - Daily cleanup removes old session data
+      - Session persistence survives server restarts
+      - Session recovery maintains test integrity
 
   v4.0: B2B Pilot Launch for Colleges
     questions:
@@ -653,6 +1183,23 @@ versions:
       - User guides, video tutorials, FAQ documentation
       - Clear pilot terms, feature limitations, support boundaries
       - Criteria: stable usage, positive feedback, payment commitment
+    tests:
+      - Onboarding process creates admin accounts successfully
+      - Guided setup walks through essential configurations
+      - Feedback collection forms capture user input
+      - Usage analytics track adoption and engagement
+      - Test completion rates monitored accurately
+      - Performance metrics show system reliability
+      - User guides accessible and comprehensive
+      - Video tutorials explain key features clearly
+      - FAQ addresses common pilot questions
+      - Pilot limitations clearly communicated to users
+      - Support boundaries defined and maintained
+      - Success metrics tracked against graduation criteria
+      - Stable usage patterns demonstrate product value
+      - Positive feedback indicates user satisfaction
+      - Payment commitment process works smoothly
+      - Pilot management dashboard shows key metrics
 
   v4.1: Multi-Organization Support (User & Data Isolation)
     questions:
@@ -681,6 +1228,23 @@ versions:
       - RESOLVED: Built from v0.1 if organization field added to all models
       - INDUSTRY PATTERN: Proven multi-tenant SaaS architecture
       - SCALABILITY: Supports enterprise-level organization management
+    tests:
+      - Organization model supports hierarchical structure
+      - Row-level security isolates organization data
+      - User management scoped to organization context
+      - Role-based access controls organization boundaries
+      - Per-organization billing tracking functions
+      - Data migration assigns existing data to default org
+      - Multi-tenant queries filter by organization automatically
+      - Organization membership supports multiple affiliations
+      - Permission model scales to large organizations
+      - System admin can manage all organizations
+      - Org admin permissions limited to their organization
+      - Data isolation prevents cross-organization leaks
+      - Billing aggregation works across organization units
+      - Admin hierarchy enforces proper access levels
+      - Django middleware handles organization context
+      - Tenant schema isolation provides data security
 
   v4.2: White-labeled Branding (Logo, Theme, Domain)
     questions:
@@ -697,6 +1261,23 @@ versions:
       - File storage for logos, upload management interface
       - Live preview of theme changes before applying
       - Organization themes override global defaults
+    tests:
+      - Logo upload and display works correctly
+      - Color customization applies throughout interface
+      - Font selection affects all text elements
+      - Custom CSS overrides default styling
+      - Email template branding matches organization theme
+      - Theme settings save and load per organization
+      - Custom domain mapping functions properly
+      - SSL certificate management works automatically
+      - Asset management handles file uploads securely
+      - Live preview shows changes before applying
+      - Theme inheritance follows organization hierarchy
+      - Branding consistency maintained across features
+      - White-label appearance removes platform branding
+      - Mobile responsive design preserves custom styling
+      - Theme performance doesn't impact load times
+      - Brand asset optimization maintains quality
 
   v4.3: Admin Usage and Audit Logs
     questions:
@@ -713,6 +1294,23 @@ versions:
       - Configurable retention periods, automatic cleanup
       - Immutable logs, digital signatures for compliance
       - Export to CSV, PDF for audit purposes
+    tests:
+      - User action logging captures all admin operations
+      - Data change tracking maintains complete audit trail
+      - Login attempt logging includes success and failures
+      - Audit log display shows chronological entries
+      - Search functionality finds specific audit events
+      - Date range filtering works accurately
+      - User-based filtering shows individual activity
+      - Action type filtering groups similar events
+      - Configurable retention policies auto-cleanup old logs
+      - Immutable log entries prevent tampering
+      - Digital signatures ensure log integrity
+      - CSV export includes all audit fields
+      - PDF export formats professionally
+      - Log storage scales with organization size
+      - Compliance features meet regulatory requirements
+      - Audit interface intuitive for administrators
 
   v4.4: Internal Messaging (Student ↔ Teacher Chat)
     questions:
@@ -729,6 +1327,23 @@ versions:
       - Email notifications, in-app notifications
       - Persistent message history, search capabilities
       - Message reporting, content filtering, admin oversight
+    tests:
+      - Basic text messaging works between students and teachers
+      - File attachment upload and download functions
+      - Read receipts show message delivery status
+      - Conversation organization by test/course context
+      - Thread management keeps discussions organized
+      - Group messaging reaches all class participants
+      - Email notifications send for new messages
+      - In-app notifications appear in real-time
+      - Message history search finds past conversations
+      - Persistent storage maintains conversation continuity
+      - Message reporting system flags inappropriate content
+      - Content filtering blocks problematic messages
+      - Admin oversight provides moderation capabilities
+      - Mobile interface supports messaging features
+      - Message privacy respects organization policies
+      - Bulk messaging tools help with announcements
 
   v4.5: Email Verification & Forgot Password Flow
     questions:
@@ -745,6 +1360,23 @@ versions:
       - Django email templates with customizable content
       - Rate limiting: 3 requests per 15 minutes per email
       - Expired tokens show clear error message, offer new request
+    tests:
+      - Email verification sends unique tokens correctly
+      - Password reset generates secure token links
+      - Token expiration enforced after 24 hours
+      - One-time token usage prevents reuse
+      - Django email templates render properly
+      - Email template customization maintains functionality
+      - Rate limiting prevents abuse (3 requests per 15 minutes)
+      - Rate limiting applies per email address
+      - Expired token handling shows helpful error messages
+      - New token request process works smoothly
+      - Email verification completes registration process
+      - Password reset allows secure password updates
+      - Token generation uses cryptographically secure methods
+      - Email delivery integrates with SMTP configuration
+      - Security measures prevent token enumeration attacks
+      - User experience guides through verification process
 
 # ARCHITECTURE SUMMARY
 # This specification follows industry-proven patterns from major LMS platforms
