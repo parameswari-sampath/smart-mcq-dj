@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Dashboard - Smart MCQ{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Student Dashboard</h2>
+            <span class="badge bg-info">{{ profile.role|title }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">Welcome, {{ user.first_name|default:user.username }}!</h5>
+                <p class="card-text">Organization: {{ profile.organization.name }}</p>
+                <p class="text-muted">You are logged in as a Student</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Available Tests</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">No tests available yet. Tests will appear here when teachers create them.</p>
+                <small class="text-muted">This functionality will be available in v0.6</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,11 +1,11 @@
 project: Smart MCQ Platform
 started: 2025-01-10
-current_version: v0.1
+current_version: v0.2
 tech_stack: Django + PostgreSQL + Bootstrap
 
 version_progress:
   v0.1_project_setup: completed
-  v0.2_authentication: pending
+  v0.2_authentication: completed
   v0.3_question_bank: pending
   v0.4_test_bank: pending
   v0.5_test_sessions: pending
@@ -156,6 +156,65 @@ prompt_log:
     user_request: Start v0.2
     action: Cannot start v0.2 - must push v0.1 to GitHub first according to rules.yaml
     status: blocked_pending_github_push
+
+  - prompt_id: 12
+    date: 2025-01-10
+    user_request: Start v0.2 authentication implementation
+    action: Started v0.2 - created Django Groups setup command, authentication views, URL routing
+    files_created:
+      - accounts/management/__init__.py
+      - accounts/management/commands/__init__.py
+      - accounts/management/commands/setup_groups.py
+      - accounts/urls.py
+    files_modified:
+      - accounts/views.py
+      - smart_mcq/urls.py
+      - dev_log.yaml
+    status: v0.2_in_progress
+
+  - prompt_id: 13
+    date: 2025-01-10
+    user_request: Continue v0.2 - create templates and complete authentication
+    action: Completed v0.2 authentication system - created all templates, admin registration, authentication settings, ran groups setup
+    files_created:
+      - templates/accounts/login.html
+      - templates/accounts/register.html
+      - templates/accounts/student_dashboard.html
+      - templates/accounts/teacher_dashboard.html
+    files_modified:
+      - templates/base.html
+      - accounts/admin.py
+      - smart_mcq/settings.py
+      - dev_log.yaml
+    commands_run:
+      - python manage.py setup_groups
+      - python manage.py check
+    status: v0.2_completed
+
+  - prompt_id: 14
+    date: 2025-01-10
+    user_request: Fix logout functionality - logged in users can access login/register pages
+    action: Fixed authentication flow - added redirects for logged-in users and proper logout handling
+    files_modified:
+      - accounts/views.py
+      - accounts/urls.py
+      - templates/base.html
+      - dev_log.yaml
+    fixes_applied:
+      - Created CustomLoginView to redirect authenticated users from login page
+      - Added authentication check in register_view to redirect logged-in users
+      - Fixed logout button to use POST form with CSRF token
+      - Prevented access to login/register when already authenticated
+    status: v0.2_bug_fixed
+
+  - prompt_id: 15
+    date: 2025-01-10
+    user_request: Remove logout buttons from dashboard templates - navbar logout is working fine
+    action: Removed duplicate logout buttons from student and teacher dashboard templates
+    files_modified:
+      - templates/accounts/student_dashboard.html
+      - templates/accounts/teacher_dashboard.html
+      - dev_log.yaml
 
 current_setup:
   database:
