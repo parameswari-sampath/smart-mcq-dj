@@ -1,0 +1,124 @@
+project_rules:
+  name: Smart MCQ Platform Development Rules
+  created: 2025-01-10
+  
+mandatory_actions:
+  on_every_prompt:
+    - Read version.yaml for current specifications
+    - Read dev_log.yaml for project history
+    - Read CLAUDE.md for project guidance
+    - Read rules.yaml for development rules
+    - Update dev_log.yaml with current prompt details
+    - Follow version control progression strictly
+
+  before_new_chat:
+    required_files_to_read:
+      - version.yaml
+      - dev_log.yaml
+      - CLAUDE.md
+      - rules.yaml
+
+tech_stack_rules:
+  allowed_until_v3_6:
+    - Django
+    - PostgreSQL
+    - Bootstrap
+    - Python standard library
+    - uv for package management
+  
+  forbidden_until_v3_6:
+    - Redis
+    - Celery
+    - Any external CSS frameworks besides Bootstrap
+    - Any JavaScript frameworks
+    - Any additional databases
+    - Any third-party authentication services
+  
+  exceptions_allowed:
+    - ReportLab for PDF (only in v2.5)
+    - Email backends for notifications (v2.7)
+
+version_control_rules:
+  strict_progression:
+    - Never implement features from future versions
+    - Complete current version fully before moving to next
+    - Follow version.yaml specifications exactly
+    - No premature optimization
+    - No adding features not specified in current version
+  
+  current_version_focus:
+    - Only work on features listed in current version
+    - Stick to MVP answers provided in version.yaml
+    - Use industry_solution notes as guidance
+    - Complete all requirements before version completion
+
+development_discipline:
+  forbidden_actions:
+    - Starting future features early
+    - Adding dependencies not specified
+    - Implementing complex solutions when simple ones suffice
+    - Deviating from version.yaml specifications
+    - Skipping logging updates
+  
+  required_actions:
+    - Update dev_log.yaml on every change
+    - Follow Django best practices
+    - Keep code simple and maintainable
+    - Test each feature before moving forward
+    - Document any deviations with reasons
+
+logging_rules:
+  update_dev_log_yaml:
+    when:
+      - Every user prompt received
+      - Every file created or modified
+      - Every version milestone reached
+      - Every issue encountered and resolved
+    
+    format:
+      - Add new session entry with date
+      - List user requests clearly
+      - Document actions taken
+      - Note files created/modified/deleted
+      - Update version progress if applicable
+      - Set session status (completed/in_progress/blocked)
+
+file_management:
+  core_files:
+    - version.yaml (project specification)
+    - dev_log.yaml (development history)
+    - CLAUDE.md (project guidance)
+    - rules.yaml (this file)
+    - docker-compose.yml (database setup)
+    - start.py (startup script)
+  
+  never_delete:
+    - version.yaml
+    - dev_log.yaml
+    - CLAUDE.md
+    - rules.yaml
+
+version_completion_criteria:
+  before_marking_version_complete:
+    - All features in version.yaml answers implemented
+    - All tests passing (when tests exist)
+    - Database migrations successful
+    - No major bugs or issues
+    - Code follows Django best practices
+    - Documentation updated
+
+handoff_preparation:
+  when_starting_new_chat:
+    - Read all required files first
+    - Understand current version progress
+    - Review recent dev_log entries
+    - Follow established patterns
+    - Respect all rules and constraints
+
+violation_consequences:
+  if_rules_broken:
+    - Stop immediately
+    - Review rules.yaml
+    - Correct the violation
+    - Update dev_log.yaml with correction
+    - Continue following rules strictly

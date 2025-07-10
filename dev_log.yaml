@@ -1,0 +1,119 @@
+project: Smart MCQ Platform
+started: 2025-01-10
+current_version: v0.1
+tech_stack: Django + PostgreSQL + Bootstrap
+
+version_progress:
+  v0.1_project_setup: in_progress
+  v0.2_authentication: pending
+  v0.3_question_bank: pending
+  v0.4_test_bank: pending
+  v0.5_test_sessions: pending
+  v0.6_student_access: pending
+
+sessions:
+  - date: 2025-01-10
+    session: 1
+    objective: Project planning and specification
+    user_requests:
+      - Create version.yaml with detailed questions
+      - Add MVP answers for all versions
+      - Fix logical conflicts and add industry solutions
+    actions:
+      - Created version.yaml with 45 versions
+      - Added questions and answers for each version
+      - Resolved architectural conflicts
+      - Added industry best practices
+    files_created:
+      - version.yaml
+      - CLAUDE.md
+    status: completed
+
+  - date: 2025-01-10
+    session: 2
+    objective: v0.1 implementation start
+    user_requests:
+      - Setup PostgreSQL Docker on alternate port
+      - Create simple Python startup script
+      - Remove unnecessary files
+    actions:
+      - Created docker-compose.yml with PostgreSQL on port 5433
+      - Made start.py script that checks/starts PostgreSQL then Django
+      - Removed start_dev.py and sql directory
+    files_created:
+      - docker-compose.yml
+      - start.py
+    files_deleted:
+      - start_dev.py
+      - sql/
+    status: completed
+
+  - date: 2025-01-10
+    session: 3
+    objective: Simple logging system
+    user_requests:
+      - Create simple YAML log instead of markdown
+      - Track prompts and changes plainly
+      - Make it easy to handle
+    actions:
+      - Created dev_log.yaml for simple tracking
+      - Removed complex markdown log files
+    files_created:
+      - dev_log.yaml
+    files_deleted:
+      - DEVELOPMENT_LOG.md
+      - LOG_RULES.md
+    status: completed
+
+  - date: 2025-01-10
+    session: 4
+    objective: Create strict development rules
+    user_requests:
+      - Create rules.yaml with strict guidelines
+      - Enforce logging on every prompt
+      - Strict version control progression
+      - Tech stack discipline (only Django+PostgreSQL+Bootstrap until v3.6)
+      - Mandatory file reading before new chat sessions
+    actions:
+      - Created rules.yaml with comprehensive development rules
+      - Defined mandatory actions for every prompt
+      - Set tech stack restrictions until v3.6
+      - Established version control discipline
+      - Created file reading requirements for new chats
+      - Updated dev_log.yaml with current session
+    files_created:
+      - rules.yaml
+    status: completed
+
+prompt_log:
+  - prompt_id: 5
+    date: 2025-01-10
+    user_request: Fix rules.yaml - change "new session entry" to "current prompt details"
+    action: Updated rules.yaml to specify prompt-level logging instead of session-level
+    files_modified:
+      - rules.yaml
+
+current_setup:
+  database:
+    type: PostgreSQL
+    port: 5433
+    name: smart_mcq_db
+    user: mcq_user
+  
+  files:
+    - docker-compose.yml
+    - start.py
+    - version.yaml
+    - CLAUDE.md
+    - dev_log.yaml
+    - rules.yaml
+
+next_steps:
+  - Initialize Django project
+  - Create 4 Django apps (accounts, questions, tests, sessions)
+  - Configure Django settings for PostgreSQL
+  - Create core models with organization field
+
+commands:
+  start_app: python start.py
+  start_postgres_only: docker-compose up -d
