@@ -93,6 +93,50 @@ prompt_log:
     files_modified:
       - rules.yaml
 
+  - prompt_id: 6
+    date: 2025-01-10
+    user_request: Complete v0.1
+    action: Started v0.1 implementation - initialized Django project, created apps, configured settings, started models
+    files_created:
+      - pyproject.toml
+      - uv.lock
+      - manage.py
+      - smart_mcq/ (Django project)
+      - accounts/ (Django app)
+      - questions/ (Django app) 
+      - tests/ (Django app)
+      - sessions/ (Django app)
+      - templates/base.html
+    files_modified:
+      - smart_mcq/settings.py
+      - accounts/models.py
+    directories_created:
+      - templates/
+      - static/
+      - media/questions/
+    status: stopped_incomplete
+
+  - prompt_id: 7
+    date: 2025-01-10
+    user_request: Stop work, push v0.1 to GitHub when version is completed
+    action: Stopped v0.1 implementation, need to complete and push to GitHub
+    status: acknowledged
+
+  - prompt_id: 8
+    date: 2025-01-10
+    user_request: Add version workflow rules to rules.yaml
+    action: Added version completion criteria and workflow rules - complete version fully, test, push to GitHub, only then move to next version
+    files_modified:
+      - rules.yaml
+      - dev_log.yaml
+
+  - prompt_id: 9
+    date: 2025-01-10
+    user_request: Add gitignore file for GitHub push
+    action: Created .gitignore with Django, Python, uv, and development environment exclusions
+    files_created:
+      - .gitignore
+
 current_setup:
   database:
     type: PostgreSQL

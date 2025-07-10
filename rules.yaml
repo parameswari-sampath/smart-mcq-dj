@@ -106,6 +106,22 @@ version_completion_criteria:
     - No major bugs or issues
     - Code follows Django best practices
     - Documentation updated
+    - Push to GitHub after each version completion
+    - Never move to next version until current is fully complete and pushed
+
+version_workflow:
+  strict_process:
+    - Complete version fully according to specification
+    - Test that everything works
+    - Mark version as completed in dev_log.yaml
+    - Push to GitHub with version tag
+    - Only then move to next version
+  
+  forbidden_actions:
+    - Going too far beyond current version requirements
+    - Starting next version before current is complete
+    - Implementing features not in current version spec
+    - Skipping GitHub push after version completion
 
 handoff_preparation:
   when_starting_new_chat:
