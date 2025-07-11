@@ -131,6 +131,82 @@ handoff_preparation:
     - Follow established patterns
     - Respect all rules and constraints
 
+constants_and_format_rules:
+  date_time_formatting:
+    template_rules:
+      - ALWAYS use smart_mcq.constants.DateTimeFormats constants
+      - For JavaScript consumption: ALWAYS use |date:"c" (ISO 8601 format)
+      - For user display: use DateTimeFormats.DISPLAY_DATETIME ("M d, Y g:i A")
+      - For date-only display: use DateTimeFormats.DISPLAY_DATE ("M d, Y")
+      - NEVER use custom format strings like "Y-m-d H:i:s" with JavaScript
+      - NEVER append " UTC" to date strings in JavaScript
+    
+    javascript_rules:
+      - ALWAYS use new Date(isoString) for parsing Django |date:"c" output
+      - NEVER use new Date(customFormat + " UTC") pattern
+      - Use .toLocaleString() for user-friendly display
+      - Use .getTime() for calculations and comparisons
+      - Store timer states with consistent format
+    
+    backend_rules:
+      - Import constants from smart_mcq.constants
+      - Use timezone.now() for current time
+      - Use timezone.localtime() for display conversion
+      - NEVER hardcode datetime format strings
+  
+  constants_usage:
+    mandatory_imports:
+      - "from smart_mcq.constants import MultipleChoice, AccessCode, UserRoles"
+      - Import specific constant classes as needed
+    
+    forbidden_hardcoded_values:
+      - Access code length (use AccessCode.LENGTH)
+      - Choice labels A,B,C,D (use MultipleChoice.VALID_CHOICES)
+      - Role strings (use UserRoles.STUDENT/TEACHER)
+      - Group names (use UserRoles.GROUP_STUDENTS/TEACHERS)
+      - Field max_length values (use FieldLengths constants)
+      - Default values (use Defaults constants)
+      - Status strings (use SessionStatus constants)
+    
+    required_constants:
+      - All field lengths must use FieldLengths class
+      - All choices must use predefined choice constants
+      - All default values must use Defaults class
+      - All validation rules must use Validation class
+      - All error/success messages must use ErrorMessages/SuccessMessages
+
+  format_consistency_rules:
+    template_date_formats:
+      - Display to users: {{ datetime|date:"M d, Y g:i A" }}
+      - JavaScript data: data-time="{{ datetime|date:'c' }}"
+      - Date only: {{ date|date:"M d, Y" }}
+      - NEVER mix format types in same template
+    
+    javascript_date_handling:
+      - Parse: new Date('{{ datetime|date:"c" }}')
+      - Display: date.toLocaleString()
+      - Calculate: date.getTime()
+      - NEVER use string concatenation for time zones
+    
+    backend_consistency:
+      - Use constants for all magic numbers
+      - Use constants for all repeated strings
+      - Use constants for all validation rules
+      - Import from smart_mcq.constants module
+
+  new_feature_requirements:
+    before_implementation:
+      - Check if constants exist for needed values
+      - Add new constants to constants.py if needed
+      - Use existing date format patterns
+      - Follow established naming conventions
+    
+    constant_naming_convention:
+      - Class names: PascalCase (e.g., DateTimeFormats)
+      - Constant names: UPPER_SNAKE_CASE (e.g., ACCESS_CODE_LENGTH)
+      - Group related constants in classes
+      - Use descriptive names (avoid abbreviations)
+
 violation_consequences:
   if_rules_broken:
     - Stop immediately
@@ -138,3 +214,9 @@ violation_consequences:
     - Correct the violation
     - Update dev_log.yaml with correction
     - Continue following rules strictly
+  
+  format_violations:
+    - Revert to proper format constants immediately
+    - Check all related files for same violation
+    - Update constants.py if new formats needed
+    - Test date/time functionality thoroughly
