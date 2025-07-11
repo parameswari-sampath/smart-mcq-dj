@@ -28,5 +28,6 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
     path('questions/', include('questions.urls')),
     path('tests/', include('tests.urls')),
+    path('test-sessions/', include('test_sessions.urls')),
     path('', home_redirect, name='home'),
 ]

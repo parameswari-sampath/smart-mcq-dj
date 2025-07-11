@@ -141,30 +141,33 @@ versions:
       - How should timezone handling work?
       - What happens if a session expires?
     answers:
-      - TestSession: test, access_code, start_time, end_time, created_by, is_active
+      - TestSession: test, access_code, start_time, created_by, is_active (end_time calculated automatically)
       - 6-digit random alphanumeric code using Python secrets module
-      - Start datetime and end datetime fields (teacher sets both)
-      - Duration inherited from test time_limit + session window
-      - Simple edit form for rescheduling (teacher only)
-      - Use Django's timezone settings, default to server timezone for MVP
+      - Start datetime field only (teacher sets), end_time = start_time + test.time_limit_minutes
+      - Session window duration = test time_limit_minutes (no separate duration field needed)
+      - Simple edit form for rescheduling start_time only (teacher only)
+      - Use Django's timezone-aware datetimes with UTC storage, display in user's local timezone
+      - Timezone detection via JavaScript or user profile setting for proper display
       - Expired sessions show 'Session Expired' message, no access allowed
     tests:
-      - TestSession model creates with all required fields
+      - TestSession model creates with all required fields (no separate end_time field)
       - Access code generation produces 6-digit alphanumeric codes
-      - Start and end datetime fields save correctly
+      - Start datetime field saves correctly with timezone awareness
+      - End time calculated correctly: start_time + test.time_limit_minutes
       - Teacher can schedule sessions with proper date/time selection
       - Access codes are unique across all active sessions
-      - Session rescheduling updates dates correctly
-      - Timezone handling works with server default settings
+      - Session rescheduling updates start_time only, end_time recalculates
+      - Timezone handling works with UTC storage and local display
+      - JavaScript timezone detection for proper user experience
       - Expired sessions block student access appropriately
-      - Session creation form validates date/time inputs
-      - Duration calculation includes test time limit
+      - Session creation form validates date/time inputs with timezone
+      - Duration automatically inherited from test time_limit_minutes
       - Only teachers can create and manage test sessions
-      - Session listing shows all scheduled sessions
+      - Session listing shows all scheduled sessions in user's timezone
       - Access code security prevents easy guessing
       - Session model maintains relationship to test and creator
       - Multiple sessions per test supported correctly
-      - Session expiration logic prevents late access
+      - Session expiration logic prevents late access based on calculated end_time
     notes:
       - CRITICAL: Students never access Test directly, only via TestSession
       - Access control: TestSession.access_code is the ONLY student entry point

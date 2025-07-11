@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}Test Sessions{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Test Sessions</h2>
+                <a href="{% url 'test_sessions:session_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Schedule New Session
+                </a>
+            </div>
+
+            {% if sessions %}
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Scheduled Sessions</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-striped mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Test</th>
+                                        <th>Access Code</th>
+                                        <th>Start Time</th>
+                                        <th>Duration</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for session in sessions %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ session.test.title }}</strong><br>
+                                            <small class="text-muted">{{ session.test.questions.count }} questions</small>
+                                        </td>
+                                        <td>
+                                            <code class="bg-light px-2 py-1 rounded">{{ session.access_code }}</code>
+                                        </td>
+                                        <td>
+                                            <span id="start-time-{{ session.id }}">{{ session.start_time|date:"M d, Y g:i A" }}</span>
+                                        </td>
+                                        <td>{{ session.test.time_limit_minutes }} minutes</td>
+                                        <td>
+                                            {% if session.status == 'upcoming' %}
+                                                <span class="badge bg-primary">Upcoming</span>
+                                            {% elif session.status == 'active' %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% elif session.status == 'expired' %}
+                                                <span class="badge bg-secondary">Expired</span>
+                                            {% elif session.status == 'cancelled' %}
+                                                <span class="badge bg-danger">Cancelled</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{% url 'test_sessions:session_detail' session.pk %}" 
+                                                   class="btn btn-outline-info btn-sm">
+                                                    <i class="fas fa-eye"></i> View
+                                                </a>
+                                                {% if session.status == 'upcoming' %}
+                                                <a href="{% url 'test_sessions:session_edit' session.pk %}" 
+                                                   class="btn btn-outline-primary btn-sm">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </a>
+                                                <a href="{% url 'test_sessions:session_delete' session.pk %}" 
+                                                   class="btn btn-outline-danger btn-sm">
+                                                    <i class="fas fa-trash"></i> Cancel
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <h5 class="text-muted mb-3">No test sessions scheduled yet</h5>
+                        <p class="text-muted mb-4">Create your first test session to get started.</p>
+                        <a href="{% url 'test_sessions:session_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Schedule First Session
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Convert UTC times to user's local timezone
+document.addEventListener('DOMContentLoaded', function() {
+    {% for session in sessions %}
+    // Convert start time to user's local timezone
+    const startTimeElement = document.getElementById('start-time-{{ session.id }}');
+    const startTimeUTC = new Date('{{ session.start_time|date:"c" }}');
+    startTimeElement.textContent = startTimeUTC.toLocaleString();
+    {% endfor %}
+});
+</script>
+{% endblock %}

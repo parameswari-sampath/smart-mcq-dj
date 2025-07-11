@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+
+{% block title %}Session Details - {{ session.test.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Test Session Details</h4>
+                    <div>
+                        {% if session.status == 'upcoming' %}
+                        <a href="{% url 'test_sessions:session_edit' session.pk %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <a href="{% url 'test_sessions:session_delete' session.pk %}" class="btn btn-outline-danger btn-sm">
+                            <i class="fas fa-trash"></i> Cancel
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Test Information</h5>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Test Title:</strong></td>
+                                    <td>{{ session.test.title }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Description:</strong></td>
+                                    <td>{{ session.test.description|default:"No description" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Category:</strong></td>
+                                    <td>{{ session.test.category|default:"Uncategorized" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Questions:</strong></td>
+                                    <td>{{ session.test.questions.count }} questions</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Time Limit:</strong></td>
+                                    <td>{{ session.test.time_limit_minutes }} minutes</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Session Information</h5>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Access Code:</strong></td>
+                                    <td>
+                                        <code class="bg-light px-2 py-1 rounded fs-5">{{ session.access_code }}</code>
+                                        <button class="btn btn-sm btn-outline-primary ms-2" onclick="copyAccessCode()" title="Copy to clipboard">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Start Time:</strong></td>
+                                    <td id="start-time">{{ session.start_time|date:"M d, Y g:i A" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>End Time:</strong></td>
+                                    <td id="end-time">{{ session.end_time|date:"M d, Y g:i A" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Status:</strong></td>
+                                    <td>
+                                        {% if session.status == 'upcoming' %}
+                                            <span class="badge bg-primary fs-6">Upcoming</span>
+                                        {% elif session.status == 'active' %}
+                                            <span class="badge bg-success fs-6">Active</span>
+                                        {% elif session.status == 'expired' %}
+                                            <span class="badge bg-secondary fs-6">Expired</span>
+                                        {% elif session.status == 'cancelled' %}
+                                            <span class="badge bg-danger fs-6">Cancelled</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Created:</strong></td>
+                                    <td>{{ session.created_at|date:"M d, Y g:i A" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Instructions for Students</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle"></i> Share these instructions with your students:</h6>
+                        <ol class="mb-0">
+                            <li>Go to the student dashboard at the scheduled time</li>
+                            <li>Enter the access code: <strong>{{ session.access_code }}</strong></li>
+                            <li>Click "Join Test" to start the session</li>
+                            <li>Complete the test within {{ session.test.time_limit_minutes }} minutes</li>
+                            <li>Submit before the time limit expires</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <strong>Important Notes:</strong>
+                        <ul class="mt-2">
+                            <li>Students can only access the test during the scheduled time window</li>
+                            <li>The test will automatically submit when the time limit is reached</li>
+                            <li>Each student can only take the test once per session</li>
+                            <li>Students need to complete the test in one sitting</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'test_sessions:session_list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-list"></i> All Sessions
+                        </a>
+                        <a href="{% url 'tests:test_detail' session.test.pk %}" class="btn btn-outline-info">
+                            <i class="fas fa-eye"></i> View Test Details
+                        </a>
+                        {% if session.status == 'upcoming' %}
+                        <a href="{% url 'test_sessions:session_edit' session.pk %}" class="btn btn-outline-primary">
+                            <i class="fas fa-edit"></i> Edit Session
+                        </a>
+                        {% endif %}
+                        <button class="btn btn-outline-success" onclick="copySessionInfo()">
+                            <i class="fas fa-share"></i> Copy Session Info
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {% if session.status == 'upcoming' %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Countdown</h6>
+                </div>
+                <div class="card-body text-center">
+                    <div id="countdown" class="fs-4 text-primary">
+                        <!-- Countdown will be updated by JavaScript -->
+                    </div>
+                    <small class="text-muted">until session starts</small>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Convert UTC times to user's local timezone
+    const startTimeElement = document.getElementById('start-time');
+    const endTimeElement = document.getElementById('end-time');
+    
+    const startTimeUTC = new Date('{{ session.start_time|date:"c" }}');
+    const endTimeUTC = new Date('{{ session.end_time|date:"c" }}');
+    
+    startTimeElement.textContent = startTimeUTC.toLocaleString();
+    endTimeElement.textContent = endTimeUTC.toLocaleString();
+    
+    {% if session.status == 'upcoming' %}
+    // Countdown timer
+    function updateCountdown() {
+        const now = new Date().getTime();
+        const startTime = new Date('{{ session.start_time|date:"c" }}').getTime();
+        const distance = startTime - now;
+        
+        if (distance > 0) {
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            
+            document.getElementById("countdown").innerHTML = 
+                days + "d " + hours + "h " + minutes + "m " + seconds + "s";
+        } else {
+            document.getElementById("countdown").innerHTML = "Session has started!";
+            // Optionally reload page to update status
+            setTimeout(() => location.reload(), 2000);
+        }
+    }
+    
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+    {% endif %}
+});
+
+function copyAccessCode() {
+    const accessCode = '{{ session.access_code }}';
+    navigator.clipboard.writeText(accessCode).then(function() {
+        // Show success message
+        const button = event.target.closest('button');
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        button.classList.remove('btn-outline-primary');
+        button.classList.add('btn-success');
+        
+        // Add tooltip-like feedback
+        button.setAttribute('title', 'Access code copied to clipboard!');
+        
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-primary');
+            button.setAttribute('title', 'Copy to clipboard');
+        }, 1500);
+    }).catch(function(err) {
+        // Fallback for browsers that don't support clipboard API
+        console.error('Could not copy text: ', err);
+        const button = event.target.closest('button');
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-exclamation"></i> Error';
+        button.classList.remove('btn-outline-primary');
+        button.classList.add('btn-warning');
+        
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+            button.classList.remove('btn-warning');
+            button.classList.add('btn-outline-primary');
+        }, 1500);
+    });
+}
+
+function copySessionInfo() {
+    const sessionInfo = `Test Session Details:
+Test: {{ session.test.title }}
+Access Code: {{ session.access_code }}
+Start Time: ${document.getElementById('start-time').textContent}
+Duration: {{ session.test.time_limit_minutes }} minutes
+Status: {{ session.status|title }}`;
+    
+    navigator.clipboard.writeText(sessionInfo).then(function() {
+        // Show success message
+        const button = event.target;
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        button.classList.remove('btn-outline-success');
+        button.classList.add('btn-success');
+        
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-success');
+        }, 2000);
+    }).catch(function(err) {
+        // Fallback for browsers that don't support clipboard API
+        console.error('Could not copy text: ', err);
+        const button = event.target;
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-exclamation"></i> Error';
+        button.classList.remove('btn-outline-success');
+        button.classList.add('btn-warning');
+        
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+            button.classList.remove('btn-warning');
+            button.classList.add('btn-outline-success');
+        }, 2000);
+    });
+}
+</script>
+{% endblock %}

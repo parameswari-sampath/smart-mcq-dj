@@ -8,8 +8,8 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2>Test Details</h2>
             <div class="btn-group">
-                <a href="{% url 'test_list' %}" class="btn btn-secondary">Back to Test Bank</a>
-                <a href="{% url 'test_edit' test.pk %}" class="btn btn-primary">Edit Test</a>
+                <a href="{% url 'tests:test_list' %}" class="btn btn-secondary">Back to Test Bank</a>
+                <a href="{% url 'tests:test_edit' test.pk %}" class="btn btn-primary">Edit Test</a>
             </div>
         </div>
     </div>
@@ -66,7 +66,7 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{% url 'test_edit' test.pk %}" class="btn btn-primary">Edit Test</a>
+                    <a href="{% url 'tests:test_edit' test.pk %}" class="btn btn-primary">Edit Test</a>
                     <button class="btn btn-outline-secondary" disabled>Schedule Session</button>
                     <small class="text-muted">Session scheduling available in v0.5</small>
                 </div>
@@ -132,7 +132,7 @@
                     <div class="alert alert-warning">
                         <h6>No Questions Selected</h6>
                         <p>This test doesn't have any questions yet. Edit the test to add questions.</p>
-                        <a href="{% url 'test_edit' test.pk %}" class="btn btn-primary btn-sm">Add Questions</a>
+                        <a href="{% url 'tests:test_edit' test.pk %}" class="btn btn-primary btn-sm">Add Questions</a>
                     </div>
                 {% endif %}
             </div>

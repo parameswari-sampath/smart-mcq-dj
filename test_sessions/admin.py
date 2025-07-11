@@ -1,3 +1,43 @@
 from django.contrib import admin
+from .models import TestSession
 
-# Register your models here.
+
+@admin.register(TestSession)
+class TestSessionAdmin(admin.ModelAdmin):
+    list_display = ('test', 'access_code', 'start_time', 'end_time', 'status', 'created_by', 'is_active')
+    list_filter = ('is_active', 'start_time', 'created_by')
+    search_fields = ('test__title', 'access_code', 'created_by__username')
+    readonly_fields = ('access_code', 'created_at', 'updated_at', 'end_time')
+    ordering = ('-start_time',)
+    
+    fieldsets = (
+        (None, {
+            'fields': ('test', 'access_code', 'start_time', 'created_by', 'is_active')
+        }),
+        ('Calculated Fields', {
+            'fields': ('end_time',),
+            'description': 'End time is automatically calculated based on start time + test duration'
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # Filter by created_by for non-superusers
+        return qs.filter(created_by=request.user)
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "test" and not request.user.is_superuser:
+            # Only show tests created by the current user
+            kwargs["queryset"] = db_field.related_model.objects.filter(created_by=request.user)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+    
+    def save_model(self, request, obj, form, change):
+        if not change:  # If creating a new object
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)

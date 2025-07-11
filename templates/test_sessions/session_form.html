@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ action }} Test Session{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">{{ action }} Test Session</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if action == 'Create' %}
+                        <div class="mb-3">
+                            <label for="test" class="form-label">Select Test <span class="text-danger">*</span></label>
+                            <select class="form-select" id="test" name="test" required>
+                                <option value="">-- Select a test --</option>
+                                {% for test in tests %}
+                                <option value="{{ test.id }}">
+                                    {{ test.title }} ({{ test.questions.count }} questions, {{ test.time_limit_minutes }} min)
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if not tests %}
+                            <div class="form-text text-warning">
+                                <i class="fas fa-exclamation-triangle"></i> 
+                                You need to create a test first before scheduling a session.
+                                <a href="{% url 'tests:test_create' %}" class="text-decoration-none">Create a test</a>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="mb-3">
+                            <label class="form-label">Test</label>
+                            <div class="form-control-plaintext">
+                                <strong>{{ session.test.title }}</strong>
+                                <small class="text-muted d-block">{{ session.test.questions.count }} questions, {{ session.test.time_limit_minutes }} minutes</small>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Access Code</label>
+                            <div class="form-control-plaintext">
+                                <code class="bg-light px-2 py-1 rounded">{{ session.access_code }}</code>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="start_time" class="form-label">Start Date & Time <span class="text-danger">*</span></label>
+                            <input type="datetime-local" 
+                                   class="form-control" 
+                                   id="start_time" 
+                                   name="start_time" 
+                                   required
+                                   {% if session %}
+                                   value=""
+                                   {% endif %}>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle"></i> 
+                                Enter the date and time when students should be able to start the test.
+                                {% if action == 'Create' %}
+                                The session will automatically end after the test duration.
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if action == 'Edit' %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Current Session Details:</strong><br>
+                            Session will end automatically at: <span id="calculated-end-time">{{ session.end_time|date:"M d, Y g:i A" }}</span><br>
+                            Session status: 
+                            {% if session.status == 'upcoming' %}
+                                <span class="badge bg-primary">Upcoming</span>
+                            {% elif session.status == 'active' %}
+                                <span class="badge bg-success">Active</span>
+                            {% elif session.status == 'expired' %}
+                                <span class="badge bg-secondary">Expired</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'test_sessions:session_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Sessions
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> {{ action }} Session
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {% if action == 'Create' %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Tips for Scheduling Sessions</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li>Students will need the <strong>access code</strong> to join the test session</li>
+                        <li>The session will automatically end after the test's time limit</li>
+                        <li>You can edit the start time until the session begins</li>
+                        <li>Students cannot access the test before the start time or after it expires</li>
+                        <li>Make sure to inform students about the access code and schedule</li>
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Real-time end time calculation for create form
+document.addEventListener('DOMContentLoaded', function() {
+    const startTimeInput = document.getElementById('start_time');
+    const testSelect = document.getElementById('test');
+    
+    // Set minimum datetime to current time
+    const now = new Date();
+    const minDateTime = new Date(now.getTime() + (5 * 60000)); // Add 5 minutes buffer
+    const minDateTimeString = minDateTime.toISOString().slice(0, 16);
+    startTimeInput.min = minDateTimeString;
+    
+    function updateEndTime() {
+        if (startTimeInput.value && testSelect && testSelect.value) {
+            const selectedOption = testSelect.options[testSelect.selectedIndex];
+            const testText = selectedOption.text;
+            const timeLimitMatch = testText.match(/(\d+) min/);
+            
+            if (timeLimitMatch) {
+                const timeLimitMinutes = parseInt(timeLimitMatch[1]);
+                const startTime = new Date(startTimeInput.value);
+                const endTime = new Date(startTime.getTime() + (timeLimitMinutes * 60000));
+                
+                // Display calculated end time
+                const endTimeDisplay = document.getElementById('end-time-display');
+                if (endTimeDisplay) {
+                    endTimeDisplay.textContent = endTime.toLocaleString();
+                }
+            }
+        }
+    }
+    
+    // Add validation for past dates
+    function validateDateTime() {
+        const selectedTime = new Date(startTimeInput.value);
+        const currentTime = new Date();
+        
+        if (selectedTime <= currentTime) {
+            startTimeInput.setCustomValidity('Please select a future date and time');
+        } else {
+            startTimeInput.setCustomValidity('');
+        }
+    }
+    
+    if (startTimeInput && testSelect) {
+        startTimeInput.addEventListener('change', function() {
+            updateEndTime();
+            validateDateTime();
+        });
+        testSelect.addEventListener('change', updateEndTime);
+        
+        // Initial validation
+        if (startTimeInput.value) {
+            validateDateTime();
+        }
+    }
+    
+    // Convert timezone for edit form
+    {% if action == 'Edit' %}
+    // Set the local time value for editing
+    const sessionStartTimeUTC = new Date('{{ session.start_time|date:"c" }}');
+    const localTime = new Date(sessionStartTimeUTC.getTime() - (sessionStartTimeUTC.getTimezoneOffset() * 60000));
+    startTimeInput.value = localTime.toISOString().slice(0, 16);
+    
+    const calculatedEndTime = document.getElementById('calculated-end-time');
+    if (calculatedEndTime) {
+        const endTimeUTC = new Date('{{ session.end_time|date:"c" }}');
+        calculatedEndTime.textContent = endTimeUTC.toLocaleString();
+    }
+    {% endif %}
+});
+</script>
+{% endblock %}

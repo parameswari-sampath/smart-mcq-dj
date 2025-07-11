@@ -7,7 +7,7 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2>{% if test %}Edit Test{% else %}Create New Test{% endif %}</h2>
-            <a href="{% url 'test_list' %}" class="btn btn-secondary">Back to Test Bank</a>
+            <a href="{% url 'tests:test_list' %}" class="btn btn-secondary">Back to Test Bank</a>
         </div>
     </div>
 </div>
@@ -116,7 +116,7 @@
 
                     <!-- Form Actions -->
                     <div class="d-flex justify-content-end gap-2 mt-4">
-                        <a href="{% url 'test_list' %}" class="btn btn-secondary">Cancel</a>
+                        <a href="{% url 'tests:test_list' %}" class="btn btn-secondary">Cancel</a>
                         <button type="submit" class="btn btn-primary">
                             {% if test %}Update Test{% else %}Create Test{% endif %}
                         </button>

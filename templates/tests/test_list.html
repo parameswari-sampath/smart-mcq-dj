@@ -7,7 +7,7 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2>Test Bank</h2>
-            <a href="{% url 'test_create' %}" class="btn btn-primary">Create New Test</a>
+            <a href="{% url 'tests:test_create' %}" class="btn btn-primary">Create New Test</a>
         </div>
     </div>
 </div>
@@ -53,9 +53,9 @@
                                     <td>{{ test.created_at|date:"M d, Y" }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <a href="{% url 'test_detail' test.pk %}" class="btn btn-outline-info">View</a>
-                                            <a href="{% url 'test_edit' test.pk %}" class="btn btn-outline-primary">Edit</a>
-                                            <a href="{% url 'test_delete' test.pk %}" class="btn btn-outline-danger">Delete</a>
+                                            <a href="{% url 'tests:test_detail' test.pk %}" class="btn btn-outline-info">View</a>
+                                            <a href="{% url 'tests:test_edit' test.pk %}" class="btn btn-outline-primary">Edit</a>
+                                            <a href="{% url 'tests:test_delete' test.pk %}" class="btn btn-outline-danger">Delete</a>
                                         </div>
                                     </td>
                                 </tr>
@@ -70,7 +70,7 @@
                 <div class="card-body text-center">
                     <h5>No Tests Created Yet</h5>
                     <p class="text-muted">Start building your test bank by creating your first test.</p>
-                    <a href="{% url 'test_create' %}" class="btn btn-primary">Create First Test</a>
+                    <a href="{% url 'tests:test_create' %}" class="btn btn-primary">Create First Test</a>
                 </div>
             </div>
         {% endif %}

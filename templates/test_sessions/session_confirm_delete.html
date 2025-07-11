@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Cancel Session - {{ session.test.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0 text-danger">
+                        <i class="fas fa-exclamation-triangle"></i> Cancel Test Session
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <strong>Are you sure you want to cancel this test session?</strong>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6>Session Details:</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Test:</strong> {{ session.test.title }}</li>
+                            <li><strong>Access Code:</strong> <code>{{ session.access_code }}</code></li>
+                            <li><strong>Start Time:</strong> <span id="start-time">{{ session.start_time|date:"M d, Y g:i A" }}</span></li>
+                            <li><strong>End Time:</strong> <span id="end-time">{{ session.end_time|date:"M d, Y g:i A" }}</span></li>
+                            <li><strong>Status:</strong> 
+                                {% if session.status == 'upcoming' %}
+                                    <span class="badge bg-primary">Upcoming</span>
+                                {% elif session.status == 'active' %}
+                                    <span class="badge bg-success">Active</span>
+                                {% elif session.status == 'expired' %}
+                                    <span class="badge bg-secondary">Expired</span>
+                                {% endif %}
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle"></i> What happens when you cancel:</h6>
+                        <ul class="mb-0">
+                            <li>The session will be marked as cancelled</li>
+                            <li>Students will no longer be able to access the test with this access code</li>
+                            <li>This action cannot be undone</li>
+                            <li>You can create a new session for the same test if needed</li>
+                        </ul>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'test_sessions:session_detail' session.pk %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Go Back
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-ban"></i> Yes, Cancel Session
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Convert UTC times to user's local timezone
+    const startTimeElement = document.getElementById('start-time');
+    const endTimeElement = document.getElementById('end-time');
+    
+    const startTimeUTC = new Date('{{ session.start_time|date:"c" }}');
+    const endTimeUTC = new Date('{{ session.end_time|date:"c" }}');
+    
+    startTimeElement.textContent = startTimeUTC.toLocaleString();
+    endTimeElement.textContent = endTimeUTC.toLocaleString();
+});
+</script>
+{% endblock %}

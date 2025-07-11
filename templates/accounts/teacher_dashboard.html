@@ -30,7 +30,7 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-4 mb-3">
                         <div class="card bg-light">
                             <div class="card-body text-center">
                                 <h6>Manage Questions</h6>
@@ -39,12 +39,21 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-4 mb-3">
                         <div class="card bg-light">
                             <div class="card-body text-center">
                                 <h6>Create Tests</h6>
                                 <p class="small text-muted">Assemble tests from your questions</p>
-                                <a href="{% url 'test_list' %}" class="btn btn-primary btn-sm">Test Bank</a>
+                                <a href="{% url 'tests:test_list' %}" class="btn btn-primary btn-sm">Test Bank</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6>Schedule Sessions</h6>
+                                <p class="small text-muted">Schedule test sessions for students</p>
+                                <a href="{% url 'test_sessions:session_list' %}" class="btn btn-primary btn-sm">Test Sessions</a>
                             </div>
                         </div>
                     </div>
