@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ test_attempt.test.title }} - Take Test{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header with test info and question counter -->
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <h4>{{ test_attempt.test.title }}</h4>
+            <small class="text-muted">{{ test_attempt.test.description }}</small>
+        </div>
+        <div class="col-md-4 text-end">
+            <h5 class="text-primary">Question {{ question_number }} of {{ total_questions }}</h5>
+            <small class="text-muted">Progress: {{ progress_percentage }}%</small>
+        </div>
+    </div>
+    
+    <!-- Progress bar -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="progress" style="height: 8px;">
+                <div class="progress-bar bg-primary" 
+                     role="progressbar" 
+                     style="width: {{ progress_percentage }}%"
+                     aria-valuenow="{{ progress_percentage }}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main question card -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">{{ current_question.title }}</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Question content -->
+                    <div class="mb-4">
+                        <p class="question-text">{{ current_question.description }}</p>
+                        {% if current_question.image %}
+                        <div class="text-center my-3">
+                            <img src="{{ current_question.image.url }}" 
+                                 class="img-fluid rounded" 
+                                 alt="Question image"
+                                 style="max-height: 300px;">
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Answer choices -->
+                    <div class="answer-choices">
+                        {% for choice in current_question.choices.all %}
+                        <div class="form-check mb-3">
+                            <input class="form-check-input answer-radio" 
+                                   type="radio" 
+                                   name="answer" 
+                                   id="choice_{{ choice.label }}"
+                                   value="{{ choice.label }}"
+                                   data-question-id="{{ current_question.id }}"
+                                   {% if existing_answer and existing_answer.selected_choice == choice.label %}checked{% endif %}>
+                            <label class="form-check-label" for="choice_{{ choice.label }}">
+                                <strong>{{ choice.label }}.</strong> {{ choice.text }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Save feedback -->
+                    <div id="save-feedback" class="alert" style="display: none;"></div>
+                </div>
+                
+                <!-- Navigation buttons -->
+                <div class="card-footer d-flex justify-content-between">
+                    <form method="post" action="{% url 'navigate_question' test_attempt.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="direction" value="previous">
+                        <button type="submit" 
+                                class="btn btn-secondary"
+                                {% if test_attempt.is_first_question %}disabled{% endif %}>
+                            <i class="fas fa-arrow-left"></i> Previous
+                        </button>
+                    </form>
+                    
+                    <div class="d-flex gap-2">
+                        <small class="text-muted align-self-center">Auto-save enabled</small>
+                        <button type="button" class="btn btn-success" id="submit-test-btn">
+                            <i class="fas fa-check"></i> Submit Test
+                        </button>
+                    </div>
+                    
+                    <form method="post" action="{% url 'navigate_question' test_attempt.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="direction" value="next">
+                        <button type="submit" 
+                                class="btn btn-primary"
+                                {% if test_attempt.is_last_question %}disabled{% endif %}>
+                            Next <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Instructions panel -->
+    <div class="row justify-content-center mt-4">
+        <div class="col-lg-8">
+            <div class="card border-info">
+                <div class="card-body p-3">
+                    <h6 class="card-title text-info mb-2"><i class="fas fa-info-circle"></i> Instructions</h6>
+                    <ul class="mb-0 small">
+                        <li>Select one answer for each question by clicking the radio button</li>
+                        <li>Your answers are automatically saved when you select them</li>
+                        <li>Use Previous/Next buttons to navigate between questions</li>
+                        <li>You can change your answers by selecting a different option</li>
+                        <li>Progress bar shows how many questions you've answered</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const answerRadios = document.querySelectorAll('.answer-radio');
+    const saveStatus = document.getElementById('save-feedback');
+    const progressBar = document.querySelector('.progress-bar');
+    
+    // Handle answer selection
+    answerRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.checked) {
+                saveAnswer(this.dataset.questionId, this.value);
+            }
+        });
+    });
+    
+    function saveAnswer(questionId, selectedChoice) {
+        fetch(`{% url 'save_answer' test_attempt.id %}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                question_id: questionId,
+                selected_choice: selectedChoice
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update progress bar silently (no success message)
+                progressBar.style.width = data.progress_percentage + '%';
+                progressBar.setAttribute('aria-valuenow', data.progress_percentage);
+                
+                // Update progress text
+                const progressText = document.querySelector('.col-md-4 small');
+                if (progressText) {
+                    progressText.textContent = `Progress: ${data.progress_percentage}%`;
+                }
+            } else {
+                showSaveStatus('Error saving answer: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showSaveStatus('Network error occurred while saving', 'warning');
+        });
+    }
+    
+    function showSaveStatus(message, type) {
+        saveStatus.className = `alert alert-${type}`;
+        saveStatus.textContent = message;
+        saveStatus.style.display = 'block';
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Submit test functionality
+    const submitBtn = document.getElementById('submit-test-btn');
+    submitBtn.addEventListener('click', function() {
+        if (confirm('Are you sure you want to submit this test? You cannot change your answers after submission.')) {
+            // TODO: Implement actual test submission in v1.2
+            // For now, just redirect to dashboard with a message
+            alert('Test submitted successfully! (Actual submission will be implemented in v1.2)');
+            window.location.href = '/accounts/dashboard/';
+        }
+    });
+    
+    // Auto-focus on first radio button for better UX
+    const firstRadio = document.querySelector('.answer-radio');
+    if (firstRadio && !document.querySelector('.answer-radio:checked')) {
+        firstRadio.focus();
+    }
+});
+</script>
+
+<style>
+.question-text {
+    font-size: 1.1em;
+    line-height: 1.6;
+}
+
+.answer-choices .form-check {
+    padding: 12px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.answer-choices .form-check:hover {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+.answer-choices .form-check:has(.form-check-input:checked) {
+    background-color: #e7f3ff;
+    border-color: #0d6efd;
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.progress {
+    background-color: #e9ecef;
+}
+
+@media (max-width: 768px) {
+    .card-footer {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .card-footer form,
+    .card-footer > div {
+        width: 100%;
+    }
+    
+    .card-footer button {
+        width: 100%;
+    }
+    
+    .card-footer .d-flex {
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}

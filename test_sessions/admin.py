@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import TestSession, StudentTestAttempt
+from .models import TestSession, StudentTestAttempt, TestAttempt, Answer
 
 
 @admin.register(TestSession)
@@ -56,3 +56,45 @@ class StudentTestAttemptAdmin(admin.ModelAdmin):
             return qs
         # For teachers, show attempts for their test sessions
         return qs.filter(test_session__created_by=request.user)
+
+
+@admin.register(TestAttempt)
+class TestAttemptAdmin(admin.ModelAdmin):
+    list_display = ['student', 'test_session', 'current_question_index', 'progress_percentage', 'started_at', 'is_submitted']
+    list_filter = ['is_submitted', 'started_at']
+    search_fields = ['student_test_attempt__student__username', 'student_test_attempt__test_session__test__title']
+    readonly_fields = ['started_at', 'submitted_at', 'progress_percentage']
+    
+    def student(self, obj):
+        return obj.student.username
+    
+    def test_session(self, obj):
+        return obj.test_session.test.title
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # For teachers, show attempts for their test sessions
+        return qs.filter(student_test_attempt__test_session__created_by=request.user)
+
+
+@admin.register(Answer)
+class AnswerAdmin(admin.ModelAdmin):
+    list_display = ['student', 'question_title', 'selected_choice', 'is_correct', 'answered_at']
+    list_filter = ['is_correct', 'selected_choice', 'answered_at']
+    search_fields = ['test_attempt__student_test_attempt__student__username', 'question__title']
+    readonly_fields = ['is_correct', 'answered_at']
+    
+    def student(self, obj):
+        return obj.test_attempt.student.username
+    
+    def question_title(self, obj):
+        return obj.question.title
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # For teachers, show answers for their test sessions
+        return qs.filter(test_attempt__student_test_attempt__test_session__created_by=request.user)

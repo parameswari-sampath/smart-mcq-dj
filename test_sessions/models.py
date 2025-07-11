@@ -86,3 +86,85 @@ class StudentTestAttempt(models.Model):
     
     def __str__(self):
         return f"{self.student.username} - {self.test_session.test.title}"
+
+
+class TestAttempt(models.Model):
+    """Track detailed test attempt progress and state"""
+    student_test_attempt = models.OneToOneField(StudentTestAttempt, on_delete=models.CASCADE, related_name='attempt_detail')
+    current_question_index = models.IntegerField(default=0)  # 0-based index
+    started_at = models.DateTimeField(auto_now_add=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    is_submitted = models.BooleanField(default=False)
+    total_time_spent = models.IntegerField(default=0)  # in seconds
+    
+    class Meta:
+        ordering = ['-started_at']
+    
+    def __str__(self):
+        return f"{self.student_test_attempt.student.username} - {self.student_test_attempt.test_session.test.title} - Attempt"
+    
+    @property
+    def student(self):
+        return self.student_test_attempt.student
+    
+    @property
+    def test_session(self):
+        return self.student_test_attempt.test_session
+    
+    @property
+    def test(self):
+        return self.test_session.test
+    
+    @property
+    def questions(self):
+        return self.test.questions.all()
+    
+    @property
+    def total_questions(self):
+        return self.questions.count()
+    
+    @property
+    def current_question(self):
+        questions = list(self.questions)
+        if 0 <= self.current_question_index < len(questions):
+            return questions[self.current_question_index]
+        return None
+    
+    @property
+    def progress_percentage(self):
+        if self.total_questions == 0:
+            return 0
+        answered_count = self.answers.count()
+        return round((answered_count / self.total_questions) * 100)
+    
+    @property
+    def is_last_question(self):
+        return self.current_question_index >= self.total_questions - 1
+    
+    @property
+    def is_first_question(self):
+        return self.current_question_index <= 0
+
+
+class Answer(models.Model):
+    """Store individual question answers for test attempts"""
+    test_attempt = models.ForeignKey(TestAttempt, on_delete=models.CASCADE, related_name='answers')
+    question = models.ForeignKey('questions.Question', on_delete=models.CASCADE)
+    selected_choice = models.CharField(max_length=1, choices=[('A', 'A'), ('B', 'B'), ('C', 'C'), ('D', 'D')])
+    is_correct = models.BooleanField(default=False)
+    answered_at = models.DateTimeField(auto_now=True)
+    time_spent_seconds = models.IntegerField(default=0)
+    
+    class Meta:
+        unique_together = ['test_attempt', 'question']
+        ordering = ['answered_at']
+    
+    def __str__(self):
+        return f"{self.test_attempt.student.username} - Q{self.question.id} - {self.selected_choice}"
+    
+    def save(self, *args, **kwargs):
+        # Automatically determine if answer is correct
+        correct_choice = self.question.choices.filter(is_correct=True).first()
+        if correct_choice:
+            self.is_correct = (self.selected_choice == correct_choice.label)
+        super().save(*args, **kwargs)

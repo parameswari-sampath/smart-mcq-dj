@@ -7,7 +7,10 @@ from django.contrib import messages
 from django.urls import reverse
 from django.utils import timezone
 from .models import Profile, Organization
-from test_sessions.models import TestSession, StudentTestAttempt
+from test_sessions.models import TestSession, StudentTestAttempt, TestAttempt, Answer
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
 
 
 class CustomLoginView(LoginView):
@@ -163,13 +166,16 @@ def join_test_session(request):
                 return redirect('dashboard')
             elif session.status == 'active':
                 # Create student test attempt record
-                StudentTestAttempt.objects.create(
+                student_attempt = StudentTestAttempt.objects.create(
                     student=request.user,
                     test_session=session
                 )
-                # TODO: In v1.0, this will redirect to the test taking interface
-                messages.success(request, f'Successfully joined test: {session.test.title}! (Test interface will be available in v1.0)')
-                return redirect('dashboard')
+                # Create test attempt detail record
+                test_attempt = TestAttempt.objects.create(
+                    student_test_attempt=student_attempt
+                )
+                # Redirect to test taking interface
+                return redirect('take_test', attempt_id=test_attempt.id)
             else:
                 messages.error(request, 'This test session is not available.')
                 return redirect('dashboard')
@@ -209,3 +215,143 @@ def view_test_details(request, session_id):
     except TestSession.DoesNotExist:
         messages.error(request, 'Test session not found.')
         return redirect('dashboard')
+
+
+@login_required
+def take_test(request, attempt_id):
+    """Test taking interface with question navigation"""
+    try:
+        test_attempt = TestAttempt.objects.select_related(
+            'student_test_attempt__test_session__test',
+            'student_test_attempt__student'
+        ).get(id=attempt_id)
+        
+        # Security check: only the student who owns this attempt can access it
+        if test_attempt.student != request.user:
+            messages.error(request, 'Access denied. This test attempt does not belong to you.')
+            return redirect('dashboard')
+        
+        # Check if test session is still active
+        if test_attempt.test_session.status != 'active':
+            messages.error(request, 'This test session is no longer active.')
+            return redirect('dashboard')
+        
+        # Check if already submitted
+        if test_attempt.is_submitted:
+            messages.info(request, 'You have already submitted this test.')
+            return redirect('dashboard')
+        
+        # Get current question
+        current_question = test_attempt.current_question
+        if not current_question:
+            messages.error(request, 'No questions found for this test.')
+            return redirect('dashboard')
+        
+        # Get existing answer for current question
+        existing_answer = test_attempt.answers.filter(question=current_question).first()
+        
+        context = {
+            'test_attempt': test_attempt,
+            'current_question': current_question,
+            'existing_answer': existing_answer,
+            'question_number': test_attempt.current_question_index + 1,
+            'total_questions': test_attempt.total_questions,
+            'progress_percentage': test_attempt.progress_percentage,
+        }
+        
+        return render(request, 'accounts/take_test.html', context)
+        
+    except TestAttempt.DoesNotExist:
+        messages.error(request, 'Test attempt not found.')
+        return redirect('dashboard')
+
+
+@login_required
+def navigate_question(request, attempt_id):
+    """Handle question navigation (next/previous)"""
+    if request.method != 'POST':
+        return redirect('take_test', attempt_id=attempt_id)
+    
+    try:
+        test_attempt = TestAttempt.objects.get(id=attempt_id)
+        
+        # Security check
+        if test_attempt.student != request.user:
+            messages.error(request, 'Access denied.')
+            return redirect('dashboard')
+        
+        direction = request.POST.get('direction')
+        
+        if direction == 'next' and not test_attempt.is_last_question:
+            test_attempt.current_question_index += 1
+            test_attempt.save()
+        elif direction == 'previous' and not test_attempt.is_first_question:
+            test_attempt.current_question_index -= 1
+            test_attempt.save()
+        
+        return redirect('take_test', attempt_id=attempt_id)
+        
+    except TestAttempt.DoesNotExist:
+        messages.error(request, 'Test attempt not found.')
+        return redirect('dashboard')
+
+
+@login_required
+@csrf_exempt
+def save_answer(request, attempt_id):
+    """AJAX endpoint to save answers without page refresh"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    
+    try:
+        test_attempt = TestAttempt.objects.get(id=attempt_id)
+        
+        # Security check
+        if test_attempt.student != request.user:
+            return JsonResponse({'success': False, 'error': 'Access denied'})
+        
+        # Check if test is still active
+        if test_attempt.test_session.status != 'active':
+            return JsonResponse({'success': False, 'error': 'Test session is no longer active'})
+        
+        data = json.loads(request.body)
+        question_id = data.get('question_id')
+        selected_choice = data.get('selected_choice')
+        
+        # Validate inputs
+        if not question_id or not selected_choice:
+            return JsonResponse({'success': False, 'error': 'Missing required data'})
+        
+        if selected_choice not in ['A', 'B', 'C', 'D']:
+            return JsonResponse({'success': False, 'error': 'Invalid choice'})
+        
+        # Get the question
+        question = test_attempt.test.questions.get(id=question_id)
+        
+        # Create or update answer
+        answer, created = Answer.objects.get_or_create(
+            test_attempt=test_attempt,
+            question=question,
+            defaults={
+                'selected_choice': selected_choice,
+                'time_spent_seconds': 0  # TODO: Track actual time in v1.1
+            }
+        )
+        
+        if not created:
+            answer.selected_choice = selected_choice
+            answer.save()
+        
+        # Refresh test attempt to get updated progress
+        test_attempt.refresh_from_db()
+        
+        return JsonResponse({
+            'success': True,
+            'is_correct': answer.is_correct,
+            'progress_percentage': test_attempt.progress_percentage
+        })
+        
+    except TestAttempt.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Test attempt not found'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
