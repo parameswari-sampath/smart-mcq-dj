@@ -320,6 +320,35 @@ versions:
       - Database transactions maintain data integrity
       - Concurrent submissions handled properly
 
+  v1.2.1: Registration Groups Auto-Creation Bug Fix
+    questions:
+      - How should missing Django Groups be handled?
+      - Should setup_groups command be automated?
+      - How should registration be made more robust?
+      - What happens when Groups don't exist on fresh clone?
+    answers:
+      - Auto-create Groups in registration view if they don't exist
+      - Use get_or_create() pattern instead of get() to prevent DoesNotExist
+      - Make registration process self-healing and setup-independent
+      - Gracefully handle fresh repository clones without manual setup
+    issue_description:
+      - Registration fails with "DoesNotExist at /accounts/register/" error
+      - Root cause: Django Groups 'Students' and 'Teachers' missing in fresh clones
+      - setup_groups management command exists but isn't run automatically
+      - Registration view expects Groups to exist but doesn't create them
+    solution:
+      - Modify registration view to auto-create Groups using get_or_create
+      - Remove dependency on manual setup_groups command execution
+      - Ensure registration works immediately after git clone and migrations
+      - Use constants from smart_mcq.constants for Group names
+    tests:
+      - Registration works on fresh repository clone
+      - Groups auto-create when they don't exist
+      - Registration succeeds when Groups already exist
+      - Group creation uses proper constants and names
+      - No duplicate Groups created on multiple registrations
+      - Profile and Group assignment works correctly
+
   v1.3: Student Result View (Score + correct vs selected)
     questions:
       - What result information should be shown?
