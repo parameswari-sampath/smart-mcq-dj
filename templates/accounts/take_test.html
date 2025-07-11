@@ -132,6 +132,68 @@
             </div>
         </div>
     </div>
+    
+    <!-- Submission Confirmation Modal -->
+    <div class="modal fade" id="submission-modal" tabindex="-1" aria-labelledby="submission-modal-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="submission-modal-label">
+                        <i class="fas fa-paper-plane"></i> Submit Test
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-exclamation-triangle"></i> Are you sure you want to submit?</h6>
+                        <p class="mb-0">You cannot change your answers after submission.</p>
+                    </div>
+                    
+                    <div class="row text-center mb-3">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body py-2">
+                                    <h5 class="text-success mb-0" id="answered-count">0</h5>
+                                    <small class="text-muted">Answered</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body py-2">
+                                    <h5 class="text-primary mb-0" id="total-count">0</h5>
+                                    <small class="text-muted">Total Questions</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="unanswered-warning" class="alert alert-danger" style="display: none;">
+                        <h6><i class="fas fa-exclamation-circle"></i> Unanswered Questions</h6>
+                        <p class="mb-0">You have <strong id="unanswered-count">0</strong> unanswered question(s). These will be marked as incorrect.</p>
+                    </div>
+                    
+                    <p class="text-muted small">
+                        <i class="fas fa-info-circle"></i> 
+                        Your answers have been automatically saved. Submitting will finalize your test and calculate your score.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-arrow-left"></i> Continue Test
+                    </button>
+                    <button type="button" class="btn btn-danger" id="confirm-submit-btn">
+                        <i class="fas fa-paper-plane"></i> Submit Test
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Hidden submission form -->
+    <form id="submission-form" method="post" action="{% url 'submit_test' test_attempt.id %}" style="display: none;">
+        {% csrf_token %}
+    </form>
 </div>
 
 <script>
@@ -153,6 +215,14 @@ document.addEventListener('DOMContentLoaded', function() {
     let warningShown1min = timerState.warningShown1min || false;
     let testSubmitted = timerState.testSubmitted || false;
     
+    // Track pending save operations to prevent race conditions
+    let pendingSaves = 0;
+    let currentAnsweredCount = {{ answered_questions_count }};
+    
+    // Time tracking for current question
+    let questionStartTime = Date.now();
+    let totalTestStartTime = new Date('{{ test_attempt.started_at|date:"c" }}');
+    
     // Handle answer selection
     answerRadios.forEach(radio => {
         radio.addEventListener('change', function() {
@@ -162,7 +232,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Reset question start time when page loads (for navigation)
+    questionStartTime = Date.now();
+    
     function saveAnswer(questionId, selectedChoice) {
+        // Calculate time spent on this question BEFORE sending request
+        const timeSpentSeconds = Math.floor((Date.now() - questionStartTime) / 1000);
+        
+        // Track this save operation
+        pendingSaves++;
+        
         fetch(`{% url 'save_answer' test_attempt.id %}`, {
             method: 'POST',
             headers: {
@@ -171,11 +250,16 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: JSON.stringify({
                 question_id: questionId,
-                selected_choice: selectedChoice
+                selected_choice: selectedChoice,
+                time_spent_seconds: timeSpentSeconds
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('Save response received:', response.status); // Debug log
+            return response.json();
+        })
         .then(data => {
+            console.log('Save data:', data); // Debug log
             if (data.success) {
                 // Update progress bar silently (no success message)
                 progressBar.style.width = data.progress_percentage + '%';
@@ -186,13 +270,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (progressText) {
                     progressText.textContent = `Progress: ${data.progress_percentage}%`;
                 }
+                
+                // Update current answered count for accurate modal display
+                updateAnsweredCount();
+                console.log('Answer saved successfully'); // Debug log
             } else {
+                console.error('Save failed:', data.error); // Debug log
                 showSaveStatus('Error saving answer: ' + data.error, 'danger');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+            console.error('Save error:', error); // Debug log
             showSaveStatus('Network error occurred while saving', 'warning');
+        })
+        .finally(() => {
+            // Mark this save operation as complete
+            pendingSaves--;
+            console.log('Pending saves after completion:', pendingSaves); // Debug log
         });
     }
     
@@ -200,6 +294,19 @@ document.addEventListener('DOMContentLoaded', function() {
         saveStatus.className = `alert alert-${type}`;
         saveStatus.textContent = message;
         saveStatus.style.display = 'block';
+        
+        // Auto-hide non-error messages after 3 seconds
+        if (type !== 'danger') {
+            setTimeout(() => {
+                if (saveStatus.style.display === 'block') {
+                    saveStatus.style.display = 'none';
+                }
+            }, 3000);
+        }
+    }
+    
+    function clearSaveStatus() {
+        saveStatus.style.display = 'none';
     }
     
     function getCookie(name) {
@@ -314,12 +421,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear timer state from localStorage
         localStorage.removeItem(timerKey);
         
-        // TODO: Implement actual auto-submission in v1.2
-        // For now, redirect to dashboard after 3 seconds
+        // Auto-submit the test after 2 seconds
         setTimeout(() => {
-            alert('Time is up! Your test has been auto-submitted. (Actual submission will be implemented in v1.2)');
-            window.location.href = '/accounts/dashboard/';
-        }, 3000);
+            document.getElementById('submission-form').submit();
+        }, 2000);
     }
     
     // Start timer
@@ -331,25 +436,160 @@ document.addEventListener('DOMContentLoaded', function() {
     submitBtn.addEventListener('click', function() {
         if (testSubmitted) return;
         
-        if (confirm('Are you sure you want to submit this test? You cannot change your answers after submission.')) {
-            testSubmitted = true;
-            clearInterval(timerInterval);
-            saveTimerState();
-            
-            // Clear timer state from localStorage
-            localStorage.removeItem(timerKey);
-            
-            // TODO: Implement actual test submission in v1.2
-            // For now, just redirect to dashboard with a message
-            alert('Test submitted successfully! (Actual submission will be implemented in v1.2)');
-            window.location.href = '/accounts/dashboard/';
+        console.log('Submit button clicked, pending saves:', pendingSaves); // Debug log
+        
+        // Check if there are pending save operations
+        if (pendingSaves > 0) {
+            console.log('Waiting for pending saves...'); // Debug log
+            showSaveStatus('Saving your last answer... Please wait.', 'info');
+            // Wait for saves to complete, then show modal
+            waitForPendingSaves().then(() => {
+                console.log('Saves completed, showing modal'); // Debug log
+                // Hide the save status message
+                clearSaveStatus();
+                showSubmissionModal();
+            });
+        } else {
+            console.log('No pending saves, showing modal immediately'); // Debug log
+            // Show submission confirmation modal immediately
+            showSubmissionModal();
         }
     });
+    
+    // Add event listener for modal submit button
+    document.getElementById('confirm-submit-btn').addEventListener('click', confirmSubmission);
     
     // Auto-focus on first radio button for better UX
     const firstRadio = document.querySelector('.answer-radio');
     if (firstRadio && !document.querySelector('.answer-radio:checked')) {
         firstRadio.focus();
+    }
+    
+    // Function to update current answered count
+    function updateAnsweredCount() {
+        // Count currently checked radio buttons across all questions
+        const checkedAnswers = document.querySelectorAll('.answer-radio:checked');
+        const currentPageAnswered = checkedAnswers.length;
+        
+        // Since we're using single-question navigation, we need to use
+        // a more accurate count that accounts for saved answers
+        // For now, increment from initial count based on current page state
+        if (currentPageAnswered > 0) {
+            // This question is answered, so ensure our count reflects it
+            const currentQuestionId = document.querySelector('.answer-radio').dataset.questionId;
+            // We'll fetch the accurate count when showing the modal
+        }
+    }
+    
+    // Function to wait for all pending saves to complete
+    function waitForPendingSaves() {
+        return new Promise((resolve) => {
+            let timeout = 0;
+            const checkPending = () => {
+                console.log(`Checking pending saves: ${pendingSaves}, timeout: ${timeout}`); // Debug log
+                if (pendingSaves === 0) {
+                    console.log('All saves completed'); // Debug log
+                    resolve();
+                } else if (timeout > 50) { // Max 5 seconds wait (50 * 100ms)
+                    console.log('Timeout waiting for saves, proceeding anyway'); // Debug log
+                    pendingSaves = 0; // Reset to prevent infinite loop
+                    resolve();
+                } else {
+                    timeout++;
+                    setTimeout(checkPending, 100); // Check every 100ms
+                }
+            };
+            checkPending();
+        });
+    }
+    
+    // Submission modal functionality
+    function showSubmissionModal() {
+        // Fetch current answered count from server to ensure accuracy
+        fetch(`{% url 'save_answer' test_attempt.id %}`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const totalQuestions = {{ total_questions }};
+            const answeredQuestions = data.answered_count || {{ answered_questions_count }};
+            const unansweredQuestions = totalQuestions - answeredQuestions;
+            
+            // Update modal content with accurate counts
+            document.getElementById('answered-count').textContent = answeredQuestions;
+            document.getElementById('total-count').textContent = totalQuestions;
+            document.getElementById('unanswered-count').textContent = unansweredQuestions;
+            
+            // Show/hide unanswered warning
+            const unansweredWarning = document.getElementById('unanswered-warning');
+            if (unansweredQuestions > 0) {
+                unansweredWarning.style.display = 'block';
+            } else {
+                unansweredWarning.style.display = 'none';
+            }
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('submission-modal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error fetching answer count:', error);
+            // Fallback to original behavior if fetch fails
+            const totalQuestions = {{ total_questions }};
+            const answeredQuestions = {{ answered_questions_count }};
+            const unansweredQuestions = totalQuestions - answeredQuestions;
+            
+            document.getElementById('answered-count').textContent = answeredQuestions;
+            document.getElementById('total-count').textContent = totalQuestions;
+            document.getElementById('unanswered-count').textContent = unansweredQuestions;
+            
+            const unansweredWarning = document.getElementById('unanswered-warning');
+            if (unansweredQuestions > 0) {
+                unansweredWarning.style.display = 'block';
+            } else {
+                unansweredWarning.style.display = 'none';
+            }
+            
+            const modal = new bootstrap.Modal(document.getElementById('submission-modal'));
+            modal.show();
+        });
+    }
+    
+    function confirmSubmission() {
+        console.log('confirmSubmission called'); // Debug log
+        if (testSubmitted) return;
+        
+        // Final check for pending saves before submission
+        if (pendingSaves > 0) {
+            console.log('Waiting for pending saves to complete...');
+            showSaveStatus('Finalizing your answers...', 'info');
+            
+            waitForPendingSaves().then(() => {
+                proceedWithSubmission();
+            });
+        } else {
+            proceedWithSubmission();
+        }
+    }
+    
+    function proceedWithSubmission() {
+        testSubmitted = true;
+        clearInterval(timerInterval);
+        saveTimerState();
+        
+        // Clear timer state from localStorage
+        localStorage.removeItem(timerKey);
+        
+        // Hide modal
+        const modalElement = document.getElementById('submission-modal');
+        const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+        modal.hide();
+        
+        // Submit the form
+        document.getElementById('submission-form').submit();
     }
 });
 </script>

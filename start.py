@@ -30,4 +30,4 @@ def check_and_start_postgres():
 if __name__ == "__main__":
     check_and_start_postgres()
     print("🚀 Starting Django server...")
-    subprocess.run("uv run python manage.py runserver", shell=True)
+    subprocess.run("uv run python manage.py runserver 0.0.0.0:8000", shell=True)

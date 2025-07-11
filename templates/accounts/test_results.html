@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}Test Results - Smart MCQ{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Results Card -->
+            <div class="card">
+                <div class="card-header text-center {% if passed %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
+                    <h3 class="mb-0">
+                        <i class="fas {% if passed %}fa-check-circle{% else %}fa-times-circle{% endif %}"></i>
+                        Test {% if passed %}Completed Successfully{% else %}Needs Improvement{% endif %}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Test Information -->
+                    <div class="text-center mb-4">
+                        <h4>{{ results.test_title }}</h4>
+                        <p class="text-muted">Submitted on {{ results.submitted_at }}</p>
+                        <p class="text-info"><i class="fas fa-clock"></i> Total Time: {{ results.total_time_formatted }}</p>
+                    </div>
+                    
+                    <!-- Score Display -->
+                    <div class="row text-center mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h2 class="text-primary">{{ results.score_percentage }}%</h2>
+                                    <p class="mb-0">Overall Score</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h2 class="text-success">{{ results.correct_answers }}</h2>
+                                    <p class="mb-0">Correct Answers</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h2 class="text-info">{{ results.total_questions }}</h2>
+                                    <p class="mb-0">Total Questions</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h2 class="text-warning">{{ results.total_time_formatted }}</h2>
+                                    <p class="mb-0">Time Taken</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Progress Bar -->
+                    <div class="mb-4">
+                        <label class="form-label">Score Breakdown</label>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar {% if passed %}bg-success{% else %}bg-danger{% endif %}" 
+                                 role="progressbar" 
+                                 style="width: {{ results.score_percentage }}%"
+                                 aria-valuenow="{{ results.score_percentage }}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                {{ results.score_percentage }}%
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1">
+                            <small class="text-muted">0%</small>
+                            <small class="text-muted">Passing: 60%</small>
+                            <small class="text-muted">100%</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Performance Summary -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-chart-pie"></i> Performance Summary</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success"></i> Correct: {{ results.correct_answers }} questions</li>
+                                <li><i class="fas fa-times text-danger"></i> Incorrect: {{ results.incorrect_answers }} questions</li>
+                                <li><i class="fas fa-percentage text-primary"></i> Accuracy: {{ results.score_percentage }}%</li>
+                                <li><i class="fas fa-clock text-warning"></i> Avg time per question: {{ results.avg_time_per_question_formatted }}</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-info-circle"></i> Result Status</h6>
+                            {% if passed %}
+                            <div class="alert alert-success">
+                                <i class="fas fa-trophy"></i> <strong>Congratulations!</strong><br>
+                                You have successfully passed this test with {{ results.score_percentage }}%.
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i> <strong>Keep Learning!</strong><br>
+                                You scored {{ results.score_percentage }}%. The passing score is 60%.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="card-footer text-center">
+                    <a href="{% url 'dashboard' %}" class="btn btn-primary">
+                        <i class="fas fa-home"></i> Return to Dashboard
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Additional Information -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h6><i class="fas fa-lightbulb"></i> What's Next?</h6>
+                    <div class="row">
+                        {% if passed %}
+                        <div class="col-md-6">
+                            <h6 class="text-success">Great Job!</h6>
+                            <p class="small">You've demonstrated good understanding of the material. Keep up the excellent work!</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-info">Continue Learning</h6>
+                            <p class="small">Look out for more advanced tests to further challenge your knowledge.</p>
+                        </div>
+                        {% else %}
+                        <div class="col-md-6">
+                            <h6 class="text-warning">Areas for Improvement</h6>
+                            <p class="small">Review the topics covered in this test and practice more to improve your understanding.</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-info">Next Steps</h6>
+                            <p class="small">Consider retaking similar practice tests to strengthen your knowledge.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.urls import reverse
 from django.utils import timezone
+from django.db import models
 from .models import Profile, Organization
 from test_sessions.models import TestSession, StudentTestAttempt, TestAttempt, Answer
 from django.http import JsonResponse
@@ -251,12 +252,16 @@ def take_test(request, attempt_id):
         # Get existing answer for current question
         existing_answer = test_attempt.answers.filter(question=current_question).first()
         
+        # Get answered questions count for submission modal
+        answered_questions_count = test_attempt.answers.count()
+        
         context = {
             'test_attempt': test_attempt,
             'current_question': current_question,
             'existing_answer': existing_answer,
             'question_number': test_attempt.current_question_index + 1,
             'total_questions': test_attempt.total_questions,
+            'answered_questions_count': answered_questions_count,
             'progress_percentage': test_attempt.progress_percentage,
             'test_session': test_attempt.test_session,
             'test_end_time': test_attempt.test_session.end_time,
@@ -302,10 +307,7 @@ def navigate_question(request, attempt_id):
 @login_required
 @csrf_exempt
 def save_answer(request, attempt_id):
-    """AJAX endpoint to save answers without page refresh"""
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'error': 'Invalid request method'})
-    
+    """AJAX endpoint to save answers and get answer count"""
     try:
         test_attempt = TestAttempt.objects.get(id=attempt_id)
         
@@ -317,44 +319,179 @@ def save_answer(request, attempt_id):
         if test_attempt.test_session.status != 'active':
             return JsonResponse({'success': False, 'error': 'Test session is no longer active'})
         
-        data = json.loads(request.body)
-        question_id = data.get('question_id')
-        selected_choice = data.get('selected_choice')
+        # Handle GET request - return current answered count
+        if request.method == 'GET':
+            answered_count = test_attempt.answers.count()
+            return JsonResponse({
+                'success': True,
+                'answered_count': answered_count
+            })
         
-        # Validate inputs
-        if not question_id or not selected_choice:
-            return JsonResponse({'success': False, 'error': 'Missing required data'})
+        # Handle POST request - save answer
+        elif request.method == 'POST':
+            try:
+                data = json.loads(request.body)
+                question_id = data.get('question_id')
+                selected_choice = data.get('selected_choice')
+                time_spent_seconds = data.get('time_spent_seconds', 0)
+                
+                print(f"DEBUG: Save answer request - question_id: {question_id}, choice: {selected_choice}, time: {time_spent_seconds}")
+                
+                # Validate inputs
+                if not question_id or not selected_choice:
+                    return JsonResponse({'success': False, 'error': 'Missing required data'})
+                
+                if selected_choice not in ['A', 'B', 'C', 'D']:
+                    return JsonResponse({'success': False, 'error': 'Invalid choice'})
+                
+                # Validate time spent (should be reasonable)
+                if time_spent_seconds < 0 or time_spent_seconds > 3600:  # Max 1 hour per question
+                    time_spent_seconds = 0
+                
+                # Get the question
+                question = test_attempt.test.questions.get(id=question_id)
+                print(f"DEBUG: Found question: {question.title}")
+                
+                # Create or update answer
+                answer, created = Answer.objects.get_or_create(
+                    test_attempt=test_attempt,
+                    question=question,
+                    defaults={
+                        'selected_choice': selected_choice,
+                        'time_spent_seconds': time_spent_seconds
+                    }
+                )
+                
+                if not created:
+                    answer.selected_choice = selected_choice
+                    answer.time_spent_seconds = time_spent_seconds
+                    answer.save()
+                
+                print(f"DEBUG: Answer saved - created: {created}, choice: {answer.selected_choice}")
+                
+                # Refresh test attempt to get updated progress
+                test_attempt.refresh_from_db()
+                
+                return JsonResponse({
+                    'success': True,
+                    'is_correct': answer.is_correct,
+                    'progress_percentage': test_attempt.progress_percentage,
+                    'answered_count': test_attempt.answers.count()
+                })
+                
+            except Exception as e:
+                print(f"DEBUG: Error in save_answer POST: {str(e)}")
+                return JsonResponse({'success': False, 'error': f'Server error: {str(e)}'})
         
-        if selected_choice not in ['A', 'B', 'C', 'D']:
-            return JsonResponse({'success': False, 'error': 'Invalid choice'})
-        
-        # Get the question
-        question = test_attempt.test.questions.get(id=question_id)
-        
-        # Create or update answer
-        answer, created = Answer.objects.get_or_create(
-            test_attempt=test_attempt,
-            question=question,
-            defaults={
-                'selected_choice': selected_choice,
-                'time_spent_seconds': 0  # TODO: Track actual time in v1.1
-            }
-        )
-        
-        if not created:
-            answer.selected_choice = selected_choice
-            answer.save()
-        
-        # Refresh test attempt to get updated progress
-        test_attempt.refresh_from_db()
-        
-        return JsonResponse({
-            'success': True,
-            'is_correct': answer.is_correct,
-            'progress_percentage': test_attempt.progress_percentage
-        })
+        else:
+            return JsonResponse({'success': False, 'error': 'Invalid request method'})
         
     except TestAttempt.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Test attempt not found'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+def submit_test(request, attempt_id):
+    """Submit test attempt with instant evaluation"""
+    if request.method != 'POST':
+        return redirect('take_test', attempt_id=attempt_id)
+    
+    try:
+        from smart_mcq.constants import SuccessMessages
+        from django.utils import timezone
+        
+        test_attempt = TestAttempt.objects.get(id=attempt_id)
+        
+        # Security check
+        if test_attempt.student != request.user:
+            messages.error(request, 'Access denied.')
+            return redirect('dashboard')
+        
+        # Check if already submitted
+        if test_attempt.is_submitted:
+            messages.info(request, 'Test has already been submitted.')
+            return redirect('dashboard')
+        
+        # Check if test session is still active
+        if test_attempt.test_session.status != 'active':
+            messages.error(request, 'Test session is no longer active.')
+            return redirect('dashboard')
+        
+        # Calculate total time spent
+        total_time_spent = int((timezone.now() - test_attempt.started_at).total_seconds())
+        question_time_spent = test_attempt.answers.aggregate(total=models.Sum('time_spent_seconds'))['total'] or 0
+        
+        # Mark as submitted with time tracking
+        test_attempt.is_submitted = True
+        test_attempt.submitted_at = timezone.now()
+        test_attempt.total_time_spent = total_time_spent
+        test_attempt.save()
+        
+        # Calculate score (simple scoring: correct = 1, incorrect/blank = 0)
+        total_questions = test_attempt.total_questions
+        correct_answers = test_attempt.answers.filter(is_correct=True).count()
+        score_percentage = round((correct_answers / total_questions) * 100) if total_questions > 0 else 0
+        
+        # Format time for display
+        def format_time(seconds):
+            hours = seconds // 3600
+            minutes = (seconds % 3600) // 60
+            secs = seconds % 60
+            if hours > 0:
+                return f"{hours}h {minutes}m {secs}s"
+            elif minutes > 0:
+                return f"{minutes}m {secs}s"
+            else:
+                return f"{secs}s"
+        
+        # Calculate average time per question
+        avg_time_per_question = int(total_time_spent / total_questions) if total_questions > 0 else 0
+        
+        # Store comprehensive results in session for results page
+        incorrect_answers = total_questions - correct_answers
+        request.session['test_results'] = {
+            'attempt_id': test_attempt.id,
+            'total_questions': total_questions,
+            'correct_answers': correct_answers,
+            'incorrect_answers': incorrect_answers,
+            'score_percentage': score_percentage,
+            'test_title': test_attempt.test.title,
+            'total_time_spent': total_time_spent,
+            'total_time_formatted': format_time(total_time_spent),
+            'question_time_spent': question_time_spent,
+            'question_time_formatted': format_time(question_time_spent),
+            'avg_time_per_question': avg_time_per_question,
+            'avg_time_per_question_formatted': format_time(avg_time_per_question),
+            'submitted_at': timezone.localtime(timezone.now()).strftime('%B %d, %Y at %I:%M %p'),
+        }
+        
+        messages.success(request, SuccessMessages.TEST_SUBMITTED)
+        return redirect('test_results')
+        
+    except TestAttempt.DoesNotExist:
+        messages.error(request, 'Test attempt not found.')
+        return redirect('dashboard')
+    except Exception as e:
+        messages.error(request, f'Error submitting test: {str(e)}')
+        return redirect('take_test', attempt_id=attempt_id)
+
+
+@login_required  
+def test_results(request):
+    """Display test results after submission"""
+    results = request.session.get('test_results')
+    if not results:
+        messages.error(request, 'No test results found.')
+        return redirect('dashboard')
+    
+    # Clear results from session after displaying
+    del request.session['test_results']
+    
+    context = {
+        'results': results,
+        'passed': results['score_percentage'] >= 60,  # 60% pass threshold
+    }
+    
+    return render(request, 'accounts/test_results.html', context)
