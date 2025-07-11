@@ -55,7 +55,7 @@ def test_create(request):
             test.questions.set(selected_questions)
         
         messages.success(request, 'Test created successfully!')
-        return redirect('test_list')
+        return redirect('tests:test_list')
     
     # Get available questions for selection
     available_questions = Question.objects.filter(
@@ -92,7 +92,7 @@ def test_edit(request, pk):
         test.questions.set(selected_questions)
         
         messages.success(request, 'Test updated successfully!')
-        return redirect('test_list')
+        return redirect('tests:test_list')
     
     # Get available questions for selection
     available_questions = Question.objects.filter(
@@ -121,7 +121,7 @@ def test_delete(request, pk):
         test.is_active = False
         test.save()
         messages.success(request, 'Test deleted successfully!')
-        return redirect('test_list')
+        return redirect('tests:test_list')
     
     context = {'test': test}
     return render(request, 'tests/test_confirm_delete.html', context)

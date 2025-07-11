@@ -90,7 +90,7 @@
                                         <p class="card-text">
                                             <span class="badge bg-success">Active</span>
                                             {% if session.has_joined %}<span class="badge bg-info ms-1">Joined</span>{% endif %}
-                                            <small class="text-muted">Ends in: <span class="countdown-timer text-success fw-bold" data-end-time="{{ session.end_time|date:'Y-m-d H:i:s' }}">Calculating...</span></small>
+                                            <small class="text-muted">Ends in: <span class="countdown-timer text-success fw-bold" data-end-time="{{ session.end_time|date:'c' }}">Calculating...</span></small>
                                         </p>
                                     </div>
                                     <div>
@@ -128,7 +128,7 @@
                                         <p class="card-text">
                                             <span class="badge bg-primary">Upcoming</span>
                                             {% if session.has_joined %}<span class="badge bg-info ms-1">Joined</span>{% endif %}
-                                            <small class="text-muted">Starts in: <span class="countdown-timer text-primary fw-bold" data-start-time="{{ session.start_time|date:'Y-m-d H:i:s' }}">Calculating...</span></small>
+                                            <small class="text-muted">Starts in: <span class="countdown-timer text-primary fw-bold" data-start-time="{{ session.start_time|date:'c' }}">Calculating...</span></small>
                                         </p>
                                     </div>
                                     <div>
@@ -212,11 +212,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (startTime) {
             // Upcoming test - countdown to start time
-            targetTime = new Date(startTime + ' UTC');
+            targetTime = new Date(startTime);
             isUpcoming = true;
         } else if (endTime) {
             // Active test - countdown to end time
-            targetTime = new Date(endTime + ' UTC');
+            targetTime = new Date(endTime);
             isUpcoming = false;
         } else {
             element.textContent = 'N/A';

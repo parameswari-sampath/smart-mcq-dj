@@ -70,7 +70,7 @@ def question_create(request):
             )
         
         messages.success(request, 'Question created successfully!')
-        return redirect('question_list')
+        return redirect('questions:question_list')
     
     return render(request, 'questions/question_form.html')
 
@@ -113,7 +113,7 @@ def question_edit(request, pk):
             choice.save()
         
         messages.success(request, 'Question updated successfully!')
-        return redirect('question_list')
+        return redirect('questions:question_list')
     
     context = {
         'question': question,
@@ -136,7 +136,7 @@ def question_delete(request, pk):
         question.is_active = False
         question.save()
         messages.success(request, 'Question deleted successfully!')
-        return redirect('question_list')
+        return redirect('questions:question_list')
     
     context = {'question': question}
     return render(request, 'questions/question_confirm_delete.html', context)

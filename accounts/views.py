@@ -108,6 +108,7 @@ def dashboard_view(request):
                 # Add joined status to session object
                 session.has_joined = session.id in joined_session_ids
                 
+                
                 if session.status == 'upcoming':
                     upcoming_sessions.append(session)
                 elif session.status == 'active':
@@ -257,6 +258,8 @@ def take_test(request, attempt_id):
             'question_number': test_attempt.current_question_index + 1,
             'total_questions': test_attempt.total_questions,
             'progress_percentage': test_attempt.progress_percentage,
+            'test_session': test_attempt.test_session,
+            'test_end_time': test_attempt.test_session.end_time,
         }
         
         return render(request, 'accounts/take_test.html', context)

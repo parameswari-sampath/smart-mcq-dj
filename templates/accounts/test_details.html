@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Convert session start time to local
     const startTimeElement = document.querySelector('.session-start-time');
     if (startTimeElement) {
-        const utcTime = new Date(startTimeElement.textContent);
+        const utcTime = new Date('{{ session.start_time|date:"c" }}');
         startTimeElement.textContent = utcTime.toLocaleString();
     }
     
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const countdownElement = document.getElementById('countdown-timer');
     if (countdownElement) {
         const sessionStatus = '{{ session.status }}';
-        const startTime = new Date('{{ session.start_time|date:"Y-m-d H:i:s" }}' + ' UTC');
+        const startTime = new Date('{{ session.start_time|date:"c" }}');
         const endTime = new Date(startTime.getTime() + {{ session.test.time_limit_minutes }} * 60000);
         
         function updateCountdown() {

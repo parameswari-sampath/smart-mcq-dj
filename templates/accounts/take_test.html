@@ -3,6 +3,14 @@
 {% block title %}{{ test_attempt.test.title }} - Take Test{% endblock %}
 
 {% block content %}
+<!-- Fixed countdown timer at top-right -->
+<div id="countdown-timer" class="fixed-top-timer">
+    <div class="timer-display" id="timer-display">
+        <i class="fas fa-clock"></i>
+        <span id="timer-text">Loading...</span>
+    </div>
+</div>
+
 <div class="container-fluid">
     <!-- Header with test info and question counter -->
     <div class="row mb-3">
@@ -132,6 +140,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const saveStatus = document.getElementById('save-feedback');
     const progressBar = document.querySelector('.progress-bar');
     
+    // Timer variables
+    const timerDisplay = document.getElementById('timer-display');
+    const timerText = document.getElementById('timer-text');
+    const testEndTime = new Date('{{ test_end_time|date:"c" }}');
+    const attemptId = '{{ test_attempt.id }}';
+    
+    // Load timer state from localStorage for persistence
+    const timerKey = `test_timer_${attemptId}`;
+    let timerState = JSON.parse(localStorage.getItem(timerKey) || '{}');
+    let warningShown5min = timerState.warningShown5min || false;
+    let warningShown1min = timerState.warningShown1min || false;
+    let testSubmitted = timerState.testSubmitted || false;
+    
     // Handle answer selection
     answerRadios.forEach(radio => {
         radio.addEventListener('change', function() {
@@ -196,10 +217,128 @@ document.addEventListener('DOMContentLoaded', function() {
         return cookieValue;
     }
     
+    // Countdown timer functionality
+    function updateTimer() {
+        if (testSubmitted) return;
+        
+        const now = new Date();
+        const timeRemaining = testEndTime - now;
+        
+        if (timeRemaining <= 0) {
+            // Auto-submit when time runs out
+            autoSubmitTest();
+            return;
+        }
+        
+        // Calculate minutes and seconds
+        const totalSeconds = Math.floor(timeRemaining / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        
+        // Format timer display
+        const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        timerText.textContent = formattedTime;
+        
+        // Update timer appearance based on time remaining
+        timerDisplay.className = 'timer-display';
+        if (timeRemaining <= 60000) { // Last minute
+            timerDisplay.classList.add('danger');
+        } else if (timeRemaining <= 300000) { // Last 5 minutes
+            timerDisplay.classList.add('warning');
+        }
+        
+        // Show warning alerts
+        if (timeRemaining <= 300000 && timeRemaining > 240000 && !warningShown5min) {
+            showWarningAlert('5 minutes remaining!', 'warning');
+            warningShown5min = true;
+            saveTimerState();
+        }
+        
+        if (timeRemaining <= 60000 && timeRemaining > 30000 && !warningShown1min) {
+            showWarningAlert('1 minute remaining!', 'danger');
+            warningShown1min = true;
+            saveTimerState();
+        }
+    }
+    
+    function saveTimerState() {
+        const state = {
+            warningShown5min: warningShown5min,
+            warningShown1min: warningShown1min,
+            testSubmitted: testSubmitted,
+            lastUpdated: new Date().getTime()
+        };
+        localStorage.setItem(timerKey, JSON.stringify(state));
+    }
+    
+    function showWarningAlert(message, type) {
+        // Remove existing alerts
+        const existingAlert = document.querySelector('.timer-warning-alert');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+        
+        // Create new alert
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} timer-warning-alert`;
+        alert.innerHTML = `
+            <strong><i class="fas fa-exclamation-triangle"></i> Time Warning</strong><br>
+            ${message}
+        `;
+        
+        document.body.appendChild(alert);
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 5000);
+    }
+    
+    function autoSubmitTest() {
+        if (testSubmitted) return;
+        
+        testSubmitted = true;
+        saveTimerState();
+        timerText.textContent = '00:00';
+        timerDisplay.classList.add('danger');
+        
+        // Show auto-submit message
+        showWarningAlert('Time is up! Auto-submitting test...', 'danger');
+        
+        // Disable all form elements
+        const allInputs = document.querySelectorAll('input, button');
+        allInputs.forEach(input => input.disabled = true);
+        
+        // Clear timer state from localStorage
+        localStorage.removeItem(timerKey);
+        
+        // TODO: Implement actual auto-submission in v1.2
+        // For now, redirect to dashboard after 3 seconds
+        setTimeout(() => {
+            alert('Time is up! Your test has been auto-submitted. (Actual submission will be implemented in v1.2)');
+            window.location.href = '/accounts/dashboard/';
+        }, 3000);
+    }
+    
+    // Start timer
+    updateTimer();
+    const timerInterval = setInterval(updateTimer, 1000);
+    
     // Submit test functionality
     const submitBtn = document.getElementById('submit-test-btn');
     submitBtn.addEventListener('click', function() {
+        if (testSubmitted) return;
+        
         if (confirm('Are you sure you want to submit this test? You cannot change your answers after submission.')) {
+            testSubmitted = true;
+            clearInterval(timerInterval);
+            saveTimerState();
+            
+            // Clear timer state from localStorage
+            localStorage.removeItem(timerKey);
+            
             // TODO: Implement actual test submission in v1.2
             // For now, just redirect to dashboard with a message
             alert('Test submitted successfully! (Actual submission will be implemented in v1.2)');
@@ -263,6 +402,76 @@ document.addEventListener('DOMContentLoaded', function() {
     
     .card-footer .d-flex {
         justify-content: center;
+    }
+}
+
+/* Fixed countdown timer styles */
+.fixed-top-timer {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050;
+}
+
+.timer-display {
+    background: #007bff;
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 120px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.timer-display.warning {
+    background: #ffc107;
+    color: #000;
+}
+
+.timer-display.danger {
+    background: #dc3545;
+    color: white;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.timer-display i {
+    margin-right: 8px;
+}
+
+/* Warning alerts */
+.timer-warning-alert {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 1040;
+    max-width: 300px;
+}
+
+@media (max-width: 768px) {
+    .fixed-top-timer {
+        top: 10px;
+        right: 10px;
+    }
+    
+    .timer-display {
+        padding: 8px 12px;
+        font-size: 16px;
+        min-width: 100px;
+    }
+    
+    .timer-warning-alert {
+        top: 60px;
+        right: 10px;
+        max-width: 250px;
     }
 }
 </style>
