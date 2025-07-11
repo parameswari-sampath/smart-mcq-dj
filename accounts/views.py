@@ -11,6 +11,7 @@ from .models import Profile, Organization
 from test_sessions.models import TestSession, StudentTestAttempt, TestAttempt, Answer
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from smart_mcq.constants import UserRoles
 import json
 
 
@@ -58,9 +59,9 @@ def register_view(request):
             is_active=True
         )
         
-        # Add user to appropriate group
-        group_name = 'Students' if role == 'student' else 'Teachers'
-        group = Group.objects.get(name=group_name)
+        # Add user to appropriate group (auto-create if missing)
+        group_name = UserRoles.GROUP_STUDENTS if role == UserRoles.STUDENT else UserRoles.GROUP_TEACHERS
+        group, created = Group.objects.get_or_create(name=group_name)
         user.groups.add(group)
         
         messages.success(request, f'Account created successfully as {role}')
