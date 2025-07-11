@@ -1214,6 +1214,150 @@ versions:
       - Session persistence survives server restarts
       - Session recovery maintains test integrity
 
+  v3.10: Enhanced Authentication & User Management (MVP Gap Fix)
+    questions:
+      - How should password reset functionality work?
+      - Should email verification be required for registration?
+      - How should user profile management be implemented?
+      - What admin capabilities are needed for user management?
+      - How should account security be enhanced?
+    answers:
+      - Django's built-in password reset with email links
+      - Email verification required before account activation
+      - User profile page with password change, info updates
+      - Admin interface for user activation/deactivation, role changes
+      - Password strength requirements, account lockout after failed attempts
+    implementation:
+      - Password reset views and email templates
+      - Email verification workflow with activation tokens
+      - User profile forms and update views
+      - Enhanced admin interface with user management tools
+      - Security middleware for password policies and lockout
+    notes:
+      - SOLVES: Authentication gaps identified in v0.2 analysis
+      - SECURITY: Addresses open registration security concerns
+      - USABILITY: Provides essential user account management features
+
+  v3.11: Question Bank Enhancement (Bulk Operations & Search)
+    questions:
+      - How should bulk question import/export work?
+      - What search and filtering capabilities are needed?
+      - How should question versioning be implemented?
+      - Should there be question sharing between teachers?
+      - What analytics are needed for question usage?
+    answers:
+      - CSV/Excel import with template, bulk edit/delete operations
+      - Search by title/category/difficulty, filter by usage/date
+      - Question history tracking with restore previous versions
+      - Question sharing within organization with permission controls
+      - Usage analytics showing question performance and difficulty
+    implementation:
+      - Bulk import/export views with file validation
+      - Search and filter interface with advanced options
+      - Question versioning model with change history
+      - Sharing permissions and collaboration features
+      - Analytics dashboard for question insights
+    notes:
+      - SOLVES: Question management limitations from v0.3
+      - EFFICIENCY: Enables large-scale question management
+      - COLLABORATION: Supports teacher question sharing
+
+  v3.12: Test Bank Advanced Features (Templates & Randomization)
+    questions:
+      - How should test templates and cloning work?
+      - What randomization options should be available?
+      - How should passing scores be configured?
+      - What attempt limits and retake policies?
+      - Should there be test preview functionality?
+    answers:
+      - Test templates with reusable structures, one-click cloning
+      - Question randomization, choice order randomization
+      - Configurable passing score percentage with grade boundaries
+      - Attempt limits per student with retake policies
+      - Test preview mode for teachers to review before publishing
+    implementation:
+      - Template system with test structure definitions
+      - Randomization engine for questions and choices
+      - Scoring configuration with grade calculation
+      - Attempt tracking with policy enforcement
+      - Preview mode with teacher review interface
+    notes:
+      - SOLVES: Test management gaps from v0.4 analysis
+      - FLEXIBILITY: Provides advanced test configuration options
+      - QUALITY: Ensures test integrity through preview system
+
+  v3.13: Organization & Multi-Tenancy Enhancement
+    questions:
+      - How should organization admin roles work?
+      - What organization-specific settings are needed?
+      - How should multi-organization data isolation work?
+      - What organization management tools are required?
+      - How should organization billing/subscription work?
+    answers:
+      - Organization admin role with user/teacher management rights
+      - Custom branding, test policies, user registration controls
+      - Complete data isolation with organization-scoped queries
+      - Organization dashboard with usage statistics and controls
+      - Basic subscription tracking (full billing in v4.2)
+    implementation:
+      - Organization admin role and permissions
+      - Organization settings model and configuration interface
+      - Enhanced data filtering for multi-tenancy
+      - Organization management dashboard
+      - Basic subscription status tracking
+    notes:
+      - SOLVES: Organization management gaps from v0.1 analysis
+      - ENTERPRISE: Prepares for B2B multi-tenant deployment
+      - SCALABILITY: Enables proper organization isolation
+
+  v3.14: Student Experience Enhancement (Progress & History)
+    questions:
+      - How should student progress tracking work?
+      - What test history and portfolio features?
+      - Should there be practice mode for tests?
+      - What study materials and prep features?
+      - How should student performance analytics work?
+    answers:
+      - Progress tracking with completion rates and improvement trends
+      - Test history with detailed results and score progression
+      - Practice mode with unlimited attempts and instant feedback
+      - Study materials section with downloadable resources
+      - Student analytics dashboard with performance insights
+    implementation:
+      - Progress tracking models and calculation engine
+      - Test history interface with detailed views
+      - Practice mode with separate scoring system
+      - Study materials management and distribution
+      - Student analytics with charts and trends
+    notes:
+      - SOLVES: Student experience gaps identified in MVP analysis
+      - ENGAGEMENT: Improves student motivation through progress tracking
+      - PREPARATION: Provides tools for better test preparation
+
+  v3.15: Teacher Tools & Analytics Enhancement
+    questions:
+      - What advanced analytics should teachers have?
+      - How should gradebook functionality work?
+      - What reporting and export capabilities?
+      - Should there be communication tools?
+      - What bulk management features for classes?
+    answers:
+      - Detailed analytics on test performance, question difficulty, student progress
+      - Gradebook with score tracking, grade calculations, manual adjustments
+      - Comprehensive reports exportable to PDF/Excel with custom filters
+      - Basic messaging system for teacher-student communication
+      - Bulk operations for student management, grade import/export
+    implementation:
+      - Advanced analytics engine with multiple visualization options
+      - Gradebook interface with grade management tools
+      - Report generation system with customizable templates
+      - Simple messaging system with notifications
+      - Bulk management tools for efficient class administration
+    notes:
+      - SOLVES: Teacher workflow gaps from v0.2-v0.5 analysis
+      - EFFICIENCY: Provides comprehensive class management tools
+      - INSIGHTS: Enables data-driven teaching decisions
+
   v4.0: B2B Pilot Launch for Colleges
     questions:
       - What onboarding process is needed?
