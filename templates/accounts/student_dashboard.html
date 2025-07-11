@@ -13,6 +13,44 @@
 </div>
 
 <div class="row">
+    <div class="col-md-12 mb-4">
+        <!-- Access Code Input Section -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-key"></i> Join Test with Access Code</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'join_test_session' %}" class="row g-3">
+                    {% csrf_token %}
+                    <div class="col-auto">
+                        <label for="access_code" class="form-label">Access Code</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="access_code" 
+                               name="access_code" 
+                               placeholder="Enter 6-digit code" 
+                               maxlength="6" 
+                               style="text-transform: uppercase;"
+                               required>
+                    </div>
+                    <div class="col-auto">
+                        <label for="join_btn" class="form-label">&nbsp;</label>
+                        <button type="submit" class="btn btn-primary d-block">
+                            <i class="fas fa-sign-in-alt"></i> Join Test
+                        </button>
+                    </div>
+                    <div class="col-auto">
+                        <div class="form-text">
+                            <i class="fas fa-info-circle"></i> Enter the 6-digit access code provided by your teacher
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
     <div class="col-md-4">
         <div class="card">
             <div class="card-body text-center">
@@ -24,15 +62,211 @@
     </div>
     
     <div class="col-md-8">
+        <!-- Test Sessions Section -->
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">Available Tests</h5>
+                <h5 class="mb-0"><i class="fas fa-list"></i> Available Test Sessions</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted">No tests available yet. Tests will appear here when teachers create them.</p>
-                <small class="text-muted">This functionality will be available in v0.6</small>
+                {% if upcoming_sessions or ongoing_sessions or completed_sessions %}
+                    
+                    <!-- Ongoing Tests -->
+                    {% if ongoing_sessions %}
+                    <div class="mb-4">
+                        <h6 class="text-success"><i class="fas fa-play-circle"></i> Ongoing Tests</h6>
+                        {% for session in ongoing_sessions %}
+                        <div class="card border-success mb-2">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="card-title mb-1">{{ session.test.title }}</h6>
+                                        <p class="card-text mb-1">
+                                            <small class="text-muted">
+                                                <i class="fas fa-user"></i> {{ session.created_by.get_full_name|default:session.created_by.username }}
+                                                | <i class="fas fa-clock"></i> {{ session.test.time_limit_minutes }} minutes
+                                                | <i class="fas fa-questions"></i> {{ session.test.questions.count }} questions
+                                            </small>
+                                        </p>
+                                        <p class="card-text">
+                                            <span class="badge bg-success">Active</span>
+                                            {% if session.has_joined %}<span class="badge bg-info ms-1">Joined</span>{% endif %}
+                                            <small class="text-muted">Ends in: <span class="countdown-timer text-success fw-bold" data-end-time="{{ session.end_time|date:'Y-m-d H:i:s' }}">Calculating...</span></small>
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <a href="{% url 'view_test_details' session.id %}" class="btn btn-success btn-sm">
+                                            <i class="fas fa-eye"></i> View Test
+                                        </a>
+                                        {% if session.has_joined %}
+                                        <small class="text-muted d-block mt-1">Already joined</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Upcoming Tests -->
+                    {% if upcoming_sessions %}
+                    <div class="mb-4">
+                        <h6 class="text-primary"><i class="fas fa-clock"></i> Upcoming Tests</h6>
+                        {% for session in upcoming_sessions %}
+                        <div class="card border-primary mb-2">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="card-title mb-1">{{ session.test.title }}</h6>
+                                        <p class="card-text mb-1">
+                                            <small class="text-muted">
+                                                <i class="fas fa-user"></i> {{ session.created_by.get_full_name|default:session.created_by.username }}
+                                                | <i class="fas fa-clock"></i> {{ session.test.time_limit_minutes }} minutes
+                                                | <i class="fas fa-questions"></i> {{ session.test.questions.count }} questions
+                                            </small>
+                                        </p>
+                                        <p class="card-text">
+                                            <span class="badge bg-primary">Upcoming</span>
+                                            {% if session.has_joined %}<span class="badge bg-info ms-1">Joined</span>{% endif %}
+                                            <small class="text-muted">Starts in: <span class="countdown-timer text-primary fw-bold" data-start-time="{{ session.start_time|date:'Y-m-d H:i:s' }}">Calculating...</span></small>
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <a href="{% url 'view_test_details' session.id %}" class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-eye"></i> View Test
+                                        </a>
+                                        {% if session.has_joined %}
+                                        <small class="text-muted d-block mt-1">Already joined</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Completed Tests -->
+                    {% if completed_sessions %}
+                    <div class="mb-4">
+                        <h6 class="text-secondary"><i class="fas fa-check-circle"></i> Completed Tests</h6>
+                        {% for session in completed_sessions %}
+                        <div class="card border-secondary mb-2">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="card-title mb-1">{{ session.test.title }}</h6>
+                                        <p class="card-text mb-1">
+                                            <small class="text-muted">
+                                                <i class="fas fa-user"></i> {{ session.created_by.get_full_name|default:session.created_by.username }}
+                                                | <i class="fas fa-clock"></i> {{ session.test.time_limit_minutes }} minutes
+                                                | <i class="fas fa-questions"></i> {{ session.test.questions.count }} questions
+                                            </small>
+                                        </p>
+                                        <p class="card-text">
+                                            <span class="badge bg-secondary">Completed</span>
+                                            <small class="text-muted">Score: --/-- (Results will be available in v1.3)</small>
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-outline-secondary btn-sm" disabled>
+                                            <i class="fas fa-eye"></i> View Results
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">No test sessions available</h6>
+                        <p class="text-muted mb-0">Use the access code above to join a test session when your teacher provides one.</p>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-uppercase access code input
+    const accessCodeInput = document.getElementById('access_code');
+    accessCodeInput.addEventListener('input', function() {
+        this.value = this.value.toUpperCase();
+    });
+    
+    // Countdown timer functionality
+    const countdownElements = document.querySelectorAll('.countdown-timer');
+    
+    function updateCountdown(element) {
+        const startTime = element.getAttribute('data-start-time');
+        const endTime = element.getAttribute('data-end-time');
+        const now = new Date();
+        
+        let targetTime, isUpcoming = false;
+        
+        if (startTime) {
+            // Upcoming test - countdown to start time
+            targetTime = new Date(startTime + ' UTC');
+            isUpcoming = true;
+        } else if (endTime) {
+            // Active test - countdown to end time
+            targetTime = new Date(endTime + ' UTC');
+            isUpcoming = false;
+        } else {
+            element.textContent = 'N/A';
+            return;
+        }
+        
+        const diff = targetTime - now;
+        
+        if (diff <= 0) {
+            if (isUpcoming) {
+                element.textContent = 'Starting now!';
+                element.className = 'text-success fw-bold';
+                // Refresh page after 3 seconds to update status
+                setTimeout(() => location.reload(), 3000);
+            } else {
+                element.textContent = 'Expired!';
+                element.className = 'text-danger fw-bold';
+                // Refresh page after 3 seconds to update status
+                setTimeout(() => location.reload(), 3000);
+            }
+            return;
+        }
+        
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        let timeString;
+        if (hours > 0) {
+            timeString = `${hours}h ${minutes}m ${seconds}s`;
+        } else if (minutes > 0) {
+            timeString = `${minutes}m ${seconds}s`;
+        } else {
+            timeString = `${seconds}s`;
+            // Add urgency styling for last minute on active tests
+            if (!isUpcoming && seconds <= 60) {
+                element.className = 'text-danger fw-bold';
+            }
+        }
+        
+        element.textContent = timeString;
+    }
+    
+    // Update all countdown timers immediately
+    countdownElements.forEach(updateCountdown);
+    
+    // Update every second
+    setInterval(() => {
+        countdownElements.forEach(updateCountdown);
+    }, 1000);
+});
+</script>
 {% endblock %}

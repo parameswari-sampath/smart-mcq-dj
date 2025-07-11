@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block title %}Test Details - Smart MCQ{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Test Details</h2>
+            <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">{{ session.test.title }}</h4>
+                <span class="badge {% if session.status == 'active' %}bg-success{% elif session.status == 'upcoming' %}bg-primary{% else %}bg-secondary{% endif %}">
+                    {{ session.status|title }}
+                </span>
+                {% if has_joined %}
+                <span class="badge bg-info ms-1">You have joined</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <!-- Test Information -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-info-circle"></i> Test Information</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Description:</strong> {{ session.test.description|default:"No description provided" }}</li>
+                            <li><strong>Category:</strong> {{ session.test.category }}</li>
+                            <li><strong>Questions:</strong> {{ session.test.questions.count }}</li>
+                            <li><strong>Time Limit:</strong> {{ session.test.time_limit_minutes }} minutes</li>
+                            <li><strong>Total Marks:</strong> {{ session.test.questions.count }} (1 mark per question)</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-clock"></i> Session Timing</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Access Code:</strong> <code>{{ session.access_code }}</code></li>
+                            <li><strong>Created by:</strong> {{ session.created_by.get_full_name|default:session.created_by.username }}</li>
+                            <li><strong>Start Time:</strong> <span class="session-start-time">{{ session.start_time|date:"M d, Y g:i A" }}</span></li>
+                            <li><strong>Duration:</strong> {{ session.test.time_limit_minutes }} minutes</li>
+                            {% if session.status == 'upcoming' %}
+                            <li><strong>Starts in:</strong> <span id="countdown-timer" class="text-primary fw-bold">Calculating...</span></li>
+                            {% elif session.status == 'active' %}
+                            <li><strong>Ends in:</strong> <span id="countdown-timer" class="text-success fw-bold">Calculating...</span></li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-center gap-3">
+                    {% if session.status == 'upcoming' %}
+                        <button class="btn btn-outline-primary" disabled>
+                            <i class="fas fa-clock"></i> Test Not Started
+                        </button>
+                        <small class="text-muted mt-2">
+                            {% if has_joined %}
+                                You have already joined this test. It will be available when it starts.
+                            {% else %}
+                                Test will be available when it starts
+                            {% endif %}
+                        </small>
+                    {% elif session.status == 'active' %}
+                        {% if has_joined %}
+                            <button class="btn btn-warning btn-lg" disabled>
+                                <i class="fas fa-check-circle"></i> Already Joined
+                            </button>
+                            <small class="text-muted mt-2">You have already joined this test. Each test can only be joined once.</small>
+                        {% else %}
+                            <form method="post" action="{% url 'join_test_session' %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="access_code" value="{{ session.access_code }}">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="fas fa-play"></i> Join Test Now
+                                </button>
+                            </form>
+                            <small class="text-muted mt-2">Click to start taking the test</small>
+                        {% endif %}
+                    {% elif session.status == 'expired' %}
+                        <button class="btn btn-outline-secondary" disabled>
+                            <i class="fas fa-times-circle"></i> Test Expired
+                        </button>
+                        <small class="text-muted mt-2">This test session is no longer available</small>
+                    {% else %}
+                        <button class="btn btn-outline-warning" disabled>
+                            <i class="fas fa-pause-circle"></i> Test Cancelled
+                        </button>
+                        <small class="text-muted mt-2">This test session has been cancelled</small>
+                    {% endif %}
+                </div>
+
+                <!-- Instructions -->
+                <div class="mt-4 p-3 bg-light rounded">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Important Instructions</h6>
+                    <ul class="mb-0">
+                        <li>Make sure you have a stable internet connection</li>
+                        <li>Do not refresh the page during the test</li>
+                        <li>The test will auto-submit when time runs out</li>
+                        <li>Each question carries 1 mark</li>
+                        <li>There is no negative marking</li>
+                        {% if session.status == 'active' %}
+                        <li class="text-success fw-bold">Test is currently active - you can join now!</li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Convert session start time to local
+    const startTimeElement = document.querySelector('.session-start-time');
+    if (startTimeElement) {
+        const utcTime = new Date(startTimeElement.textContent);
+        startTimeElement.textContent = utcTime.toLocaleString();
+    }
+    
+    // Countdown timer functionality
+    const countdownElement = document.getElementById('countdown-timer');
+    if (countdownElement) {
+        const sessionStatus = '{{ session.status }}';
+        const startTime = new Date('{{ session.start_time|date:"Y-m-d H:i:s" }}' + ' UTC');
+        const endTime = new Date(startTime.getTime() + {{ session.test.time_limit_minutes }} * 60000);
+        
+        function updateCountdown() {
+            const now = new Date();
+            let targetTime, prefix;
+            
+            if (sessionStatus === 'upcoming') {
+                targetTime = startTime;
+                prefix = '';
+            } else if (sessionStatus === 'active') {
+                targetTime = endTime;
+                prefix = '';
+            } else {
+                countdownElement.textContent = 'N/A';
+                return;
+            }
+            
+            const diff = targetTime - now;
+            
+            if (diff <= 0) {
+                if (sessionStatus === 'upcoming') {
+                    countdownElement.textContent = 'Test Started!';
+                    countdownElement.className = 'text-success fw-bold';
+                    // Refresh page to update status
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    countdownElement.textContent = 'Test Ended!';
+                    countdownElement.className = 'text-danger fw-bold';
+                    // Refresh page to update status
+                    setTimeout(() => location.reload(), 2000);
+                }
+                return;
+            }
+            
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            if (hours > 0) {
+                countdownElement.textContent = `${prefix}${hours}h ${minutes}m ${seconds}s`;
+            } else if (minutes > 0) {
+                countdownElement.textContent = `${prefix}${minutes}m ${seconds}s`;
+            } else {
+                countdownElement.textContent = `${prefix}${seconds}s`;
+                // Add urgency styling for last minute
+                if (seconds <= 60 && sessionStatus === 'active') {
+                    countdownElement.className = 'text-danger fw-bold';
+                }
+            }
+        }
+        
+        // Update immediately and then every second
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+    }
+});
+</script>
+{% endblock %}

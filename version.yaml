@@ -825,6 +825,49 @@ versions:
       - Teacher can review attempts by mode type
       - Industry-standard attempt management implemented
 
+  v2.9: Class-Based Test Assignment (Post-MVP Enhancement)
+    questions:
+      - How should classes be created and managed?
+      - How should students join classes?
+      - How should test assignment to classes work?
+      - Should there be bulk student management?
+      - How should class enrollment be tracked?
+      - What happens to existing access code workflow?
+    answers:
+      - Simple class creation with name, description, and auto-generated join code
+      - Students join via 8-digit class code (similar to current test access codes)
+      - Teachers assign test sessions to entire classes with one click
+      - Basic CSV import for bulk student enrollment
+      - Track enrollment date and status per student-class relationship
+      - Access codes remain as fallback option alongside class assignments
+    industry_solution:
+      - GOOGLE CLASSROOM MODEL: Simple class codes, stream-based assignments
+      - CANVAS PATTERN: Course enrollment with assignment distribution
+      - HYBRID APPROACH: Both class assignment and direct access codes supported
+    implementation:
+      - Class model with teacher ownership and join codes
+      - ClassEnrollment model for student-class relationships
+      - TestAssignment model linking test sessions to classes
+      - Enhanced student dashboard showing "My Classes" and "Assigned Tests"
+      - Teacher class management interface with enrollment tracking
+      - Assignment workflow integrated into existing test session creation
+    tests:
+      - Teachers can create classes with auto-generated join codes
+      - Students can join classes using 8-digit class codes
+      - Teachers can assign test sessions to entire classes
+      - Students see assigned tests prominently on dashboard
+      - Class enrollment tracking works correctly
+      - Bulk student import via CSV functions properly
+      - Access code workflow continues to work alongside assignments
+      - Class-assigned tests take priority over general available tests
+      - Teacher can view class enrollment and assignment status
+      - Class management integrates smoothly with existing UI
+    notes:
+      - SOLVES: Student test discovery problem identified in v0.6
+      - MAINTAINS: Existing access code workflow for backward compatibility
+      - PRIORITY: Post-MVP feature after core test-taking functionality complete
+      - SIMPLICITY: Focuses on class-based assignment only, not full LMS complexity
+
   v3.0: Coding Question Type (Python Editor + Test Cases)
     questions:
       - What code editor features are needed?

@@ -71,3 +71,18 @@ class TestSession(models.Model):
         if not self.access_code:
             self.access_code = generate_access_code()
         super().save(*args, **kwargs)
+
+
+class StudentTestAttempt(models.Model):
+    """Track student attempts to join test sessions"""
+    student = models.ForeignKey(User, on_delete=models.CASCADE)
+    test_session = models.ForeignKey(TestSession, on_delete=models.CASCADE)
+    joined_at = models.DateTimeField(auto_now_add=True)
+    is_completed = models.BooleanField(default=False)
+    
+    class Meta:
+        unique_together = ['student', 'test_session']
+        ordering = ['-joined_at']
+    
+    def __str__(self):
+        return f"{self.student.username} - {self.test_session.test.title}"

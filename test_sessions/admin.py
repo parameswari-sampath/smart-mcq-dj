@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import TestSession
+from .models import TestSession, StudentTestAttempt
 
 
 @admin.register(TestSession)
@@ -41,3 +41,18 @@ class TestSessionAdmin(admin.ModelAdmin):
         if not change:  # If creating a new object
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(StudentTestAttempt)
+class StudentTestAttemptAdmin(admin.ModelAdmin):
+    list_display = ['student', 'test_session', 'joined_at', 'is_completed']
+    list_filter = ['joined_at', 'is_completed']
+    search_fields = ['student__username', 'test_session__test__title', 'test_session__access_code']
+    readonly_fields = ['joined_at']
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # For teachers, show attempts for their test sessions
+        return qs.filter(test_session__created_by=request.user)
