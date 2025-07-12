@@ -522,21 +522,21 @@ versions:
       - ACADEMIC INTEGRITY: Prevents answer sharing between students taking test at different times
       - TEACHER WORKFLOW: Efficient bulk operations while allowing individual exceptions
 
-  v1.5: Tab Switch Tracking and Focus Loss Detection
+  v1.5: First-Click Analytics Foundation + Security Tracking
     questions:
-      - What events should be tracked?
+      - How should first-click data be captured for learning analytics?
+      - What test modes should be supported (test vs practice)?
+      - How should question/answer shuffling work?
+      - What events should be tracked for security?
       - How should violations be displayed to teachers?
-      - Should there be automatic warnings to students?
-      - What data should be stored for each event?
-      - How should severity levels be handled?
-      - Should there be real-time monitoring?
+      - What data structure supports both basic and advanced analytics?
     answers:
-      - Track: tab switch (visibilitychange), window blur/focus, page unload
-      - Simple table in teacher results showing violation count per student
-      - Show warning modal to student: 'Focus on test, tab switching detected'
-      - Store: timestamp, event type, student, test session
-      - Simple count-based severity: 1-2 warnings, 3+ serious violations
-      - No real-time monitoring for MVP, review violations post-test
+      - Capture first-click answer, timestamp, and correctness via AJAX before allowing changes
+      - Add mode field to TestSession: 'test' (free navigation) vs 'practice' (constrained flow)
+      - Shuffle questions per session, shuffle answer choices per student attempt
+      - Track: tab switch (visibilitychange), window blur/focus, page unload, first-click events
+      - Simple table in teacher results showing violation count and first-click accuracy per student
+      - Enhanced TestAttempt model: first_click_answer, first_click_timestamp, first_click_correct, total_attempts
     industry_solution:
       - PROCTORIO APPROACH: Configurable violation policies per test
       - WARNING SYSTEM: 1st warning, 2nd final warning, 3rd auto-submit or lock
@@ -545,88 +545,134 @@ versions:
       - APPEAL PROCESS: Students can add notes explaining violations
       - IMPLEMENTATION: Add proctoring_settings JSON field to Test model
     tests:
+      - First-click data captures immediately on answer selection
+      - TestSession mode field ('test'/'practice') saves correctly
+      - Question order shuffles per session uniquely
+      - Answer choice order shuffles per student attempt
       - Tab switch events are detected and logged
       - Window blur/focus events trigger properly
-      - Page unload events are captured
-      - Warning modal displays on tab switch
-      - Violation counter increments correctly
-      - Teacher results show violation counts per student
-      - Multiple violations escalate warning severity
-      - Timestamp logging works for all events
-      - Violations persist across browser refresh
-      - Warning modal doesn't interfere with test taking
-      - Event logging works in different browsers
-      - Violation data displays in teacher dashboard
-      - Real-time violation detection responds quickly
-      - Auto-submit triggers on excessive violations
-      - Student appeal notes are saved correctly
-      - Proctoring settings apply per test session
+      - First-click accuracy calculation works correctly
+      - Enhanced TestAttempt model stores all analytics fields
+      - Teacher results show both violation counts and first-click metrics
+      - Security violation logging includes first-click context
+      - Practice mode flow constraints respect first-click data
+      - Test mode allows navigation regardless of first-click accuracy
+      - Analytics foundation supports future learning efficiency calculations
+      - Database schema migration adds new fields without breaking existing data
+      - AJAX first-click capture works across all browsers
+      - Data integrity maintained between basic scoring and advanced analytics
 
-  v1.6: Time Tracking Per Question (Start-End duration capture)
+  v1.6: Learning Analytics Engine + Practice Mode Flow Control
     questions:
-      - What timing data should be captured?
-      - How should time spent per question be calculated?
-      - Should there be idle time detection?
-      - How should timing reports be displayed?
-      - What analytics should be generated?
-      - Should there be time-based insights?
+      - How should learning efficiency be calculated from first-click data?
+      - How should practice mode enforce correct answers before proceeding?
+      - What timing data should be captured for speed vs accuracy analysis?
+      - How should question difficulty be analyzed automatically?
+      - What learning insights should be generated for students and teachers?
+      - How should practice mode completion validation work?
     answers:
-      - Capture: question start time, question end time, total duration
-      - Calculate time when student navigates away from question
-      - No idle detection for MVP, just active time on question
-      - Simple table showing average time per question for teachers
-      - Basic analytics: fastest/slowest questions, time distribution
-      - No complex insights for MVP, just raw timing data
+      - Learning efficiency: (first_attempt_percentage * 0.7) + (second_attempt_success_rate * 0.3)
+      - Practice mode: disable Next button until correct answer selected, block submission until 100% complete
+      - Capture: question start time, first-click time, final answer time, total time, attempt count
+      - Question difficulty: success_rate < 40% = hard, 40-70% = medium, >70% = easy
+      - Generate: speed vs accuracy correlation, fatigue analysis, recovery patterns, learning trends
+      - Practice completion: validate all questions answered correctly, prevent partial submissions
     tests:
-      - Question start time captured when question loads
-      - Question end time captured on navigation
-      - Duration calculation accurate for each question
-      - Time tracking works across page refresh
-      - Idle time detection pauses timer
-      - Teacher report shows average time per question
-      - Timing analytics display fastest/slowest questions
-      - Time distribution chart renders correctly
-      - Individual student timing data available
-      - Total test time calculation matches sum
-      - Time tracking resilient to browser issues
-      - Timing data exports correctly
-      - Zero-time questions handled appropriately
-      - Time data visualization is clear
-      - Performance insights help identify problem questions
-      - Timing data maintains student privacy
+      - Learning efficiency algorithm calculates correctly from first-click data
+      - Practice mode blocks navigation until correct answer selected
+      - Practice mode prevents submission until all questions answered correctly
+      - Question timing captures first-click, final answer, and total durations
+      - Speed vs accuracy correlation generates meaningful insights
+      - Question difficulty analysis categorizes questions appropriately
+      - Fatigue analysis detects performance degradation over test duration
+      - Recovery pattern analysis tracks student improvement after wrong answers
+      - Practice flow validation ensures 100% completion before allowing submission
+      - Learning analytics display in enhanced teacher dashboard
+      - Student progress insights help identify learning patterns
+      - Time-based analytics identify questions requiring too much/little time
+      - Learning efficiency scoring provides actionable student feedback
+      - Practice mode UI clearly indicates completion requirements
+      - Analytics calculations handle edge cases (no attempts, single question tests)
+      - Performance insights maintain student privacy while providing teacher value
 
-  v1.7: Behavior Log Viewer for Teachers/Admin
+  v1.7: Advanced Analytics Dashboard + Encrypted Result Export
     questions:
-      - What behavior data should be logged?
-      - How should logs be displayed and filtered?
-      - What search capabilities are needed?
-      - Should there be behavior pattern analysis?
-      - How should suspicious activity be highlighted?
-      - What export options for behavior data?
+      - How should comprehensive learning analytics be displayed to teachers?
+      - What export format should match the POC encrypted results?
+      - How should behavior logs integrate with learning analytics?
+      - What dashboard layout provides maximum insight value?
+      - How should encrypted exports preserve all analytics data?
+      - What filtering and search capabilities enhance teacher workflow?
     answers:
-      - Log: tab switches, focus loss, time per question, submission attempts
-      - Simple table with student, event type, timestamp, test session
-      - Basic search by student name or event type
-      - No pattern analysis for MVP, just raw event listing
-      - Highlight rows with high violation counts (3+ tab switches)
-      - No export for MVP, teacher can view in browser only
+      - Comprehensive dashboard: learning efficiency trends, question difficulty heatmaps, student progress analytics
+      - Export encrypted .enc files using AES encryption with same format as POC (JSON with analytics data)
+      - Behavior logs: integrate tab switches, focus loss, timing with first-click and learning analytics
+      - Dashboard layout: summary cards, interactive charts, detailed student breakdowns, question performance analysis
+      - Encrypted exports: include all first-click data, learning efficiency, timing, behavior, and performance analytics
+      - Advanced filtering: by student performance, question difficulty, time ranges, learning efficiency scores
     tests:
-      - Behavior log displays all tracked events
-      - Log table shows student, event type, timestamp
-      - Search by student name functions correctly
-      - Filter by event type works properly
-      - High violation counts highlighted in red
-      - Chronological sorting of events
-      - Log entries cannot be modified
-      - Pagination handles large log volumes
-      - Event details show complete context
-      - Suspicious activity clearly marked
-      - Log viewing restricted to authorized teachers
-      - Real-time log updates as events occur
-      - Log data integrity maintained
-      - Clear event descriptions for non-technical users
-      - Log retention follows defined policies
-      - Admin oversight of all behavior logs
+      - Advanced analytics dashboard displays learning efficiency trends
+      - Question difficulty heatmaps show performance patterns across questions
+      - Student progress analytics track improvement over time
+      - Encrypted .enc export generates files matching POC format exactly
+      - AES encryption preserves all analytics data in exports
+      - Behavior logs integrate with first-click and learning analytics
+      - Dashboard summary cards provide key metrics at a glance
+      - Interactive charts allow drill-down into specific data points
+      - Student breakdown shows individual learning patterns and efficiency scores
+      - Question performance analysis identifies difficult/easy questions automatically
+      - Advanced filtering works by student performance levels
+      - Time range filtering allows historical analysis
+      - Learning efficiency score filtering identifies students needing support
+      - Export includes all POC analytics: first-click, timing, behavior, efficiency
+      - Dashboard performance handles large datasets efficiently
+      - Analytics calculations maintain accuracy across different test modes
+
+  v1.8: Complete POC Analytics Integration
+    questions:
+      - How should the analytics dashboard match POC capabilities exactly?
+      - What additional learning insights should be provided to students?
+      - How should question randomization integrate with existing shuffling?
+      - What performance optimizations are needed for large datasets?
+      - How should the system handle concurrent users with analytics?
+      - What admin tools are needed for analytics management?
+    answers:
+      - Full analytics dashboard matching POC: fatigue analysis, speed vs accuracy correlation, recovery patterns
+      - Student insights: learning efficiency trends, personal improvement recommendations, practice suggestions
+      - Enhanced randomization: question pools, weighted selection, difficulty-based ordering
+      - Performance: caching analytics calculations, async processing for large exports, database indexing
+      - Concurrent handling: optimistic locking, session isolation, real-time analytics updates
+      - Admin tools: analytics configuration, data export management, system performance monitoring
+    poc_feature_completion:
+      - Learning efficiency algorithm: (first_attempt_accuracy * 0.7) + (true_learning_rate * 0.3)
+      - Speed vs accuracy correlation: Pearson correlation between time spent and accuracy
+      - Fatigue analysis: first half vs second half performance comparison
+      - Recovery patterns: consecutive wrong answers and recovery tracking
+      - Random clicking detection: 3+ attempts indicating guessing behavior
+      - Question difficulty classification: Easy (70%+), Medium (50-70%), Hard (30-50%), Very Hard (<30%)
+      - Time complexity analysis: relative to average time per question
+      - Complete encrypted export: matching POC .enc format with all analytics data
+    tests:
+      - Learning efficiency algorithm produces identical results to POC
+      - Speed vs accuracy correlation calculates Pearson coefficient correctly
+      - Fatigue analysis detects performance degradation accurately
+      - Recovery pattern analysis tracks improvement sequences
+      - Random clicking detection identifies students with excessive attempts
+      - Question difficulty auto-classification matches manual assessment
+      - Time complexity analysis provides meaningful insights
+      - Encrypted exports match POC format byte-for-byte
+      - Analytics dashboard loads quickly with large datasets
+      - Real-time updates don't impact test-taking performance
+      - Student insights provide actionable learning recommendations
+      - Teacher analytics enable data-driven instruction decisions
+      - System scales to hundreds of concurrent users
+      - Analytics data integrity maintained across all operations
+      - POC feature parity achieved with enhanced Django architecture
+    notes:
+      - COMPLETE POC INTEGRATION: All proof-of-concept features now available in Django
+      - ENHANCED ARCHITECTURE: Better scalability and maintainability than original POC
+      - UNIFIED PLATFORM: Single system supports both basic MCQ and advanced analytics
+      - PERFORMANCE OPTIMIZED: Enterprise-ready with caching and async processing
 
   v2.0: Question Navigator (Jump to Q1-Q10)
     questions:
@@ -912,21 +958,21 @@ versions:
       - Notification system scales with user volume
       - Email scheduling handles server downtime
 
-  v2.8: Test Modes (Strict vs Practice)
+  v2.8: Test vs Practice Flow Control (REVISED)
     questions:
-      - What differences should exist between modes?
-      - How should mode selection work?
-      - What restrictions apply in strict mode?
-      - Should practice mode have different features?
-      - How should mode affect scoring?
-      - What configuration options per mode?
+      - What are the key flow differences between test and practice modes?
+      - How should practice mode enforce learning constraints?
+      - How should test mode allow assessment flexibility?
+      - What navigation restrictions apply to each mode?
+      - How should completion validation differ between modes?
+      - What analytics apply to both modes equally?
     answers:
-      - Strict: no tab switching allowed, timer enforced; Practice: relaxed rules
-      - Radio button selection when creating test session
-      - Strict mode: auto-submit on violations, strict time limits
-      - Practice mode: unlimited attempts, immediate feedback, no violations
-      - Strict mode counts for official grades, practice mode doesn't
-      - Simple mode field on TestSession model, no complex configurations
+      - Test mode: free navigation between questions, can submit incomplete, assessment-focused
+      - Practice mode: must answer correctly before proceeding, cannot submit until 100% complete, learning-focused
+      - Radio button selection when creating test session (mode affects UI flow only)
+      - Test mode: all navigation enabled, can skip questions, submission allowed anytime
+      - Practice mode: Next button disabled until correct answer, Submit button disabled until all correct
+      - SAME analytics for both: first-click tracking, learning efficiency, timing, behavior monitoring
     industry_solution:
       - CANVAS APPROACH: Practice attempts vs Graded attempts
       - ATTEMPT LIMIT: Set max attempts per student (e.g., 3 practice, 1 graded)
@@ -939,22 +985,22 @@ versions:
       - STANDARD: Industry approach separates attempt types, not modes
       - FLEXIBILITY: Teachers control attempt limits and scoring policies
     tests:
-      - Test mode selection radio buttons work correctly
-      - Strict mode enforces all violations and time limits
-      - Practice mode allows relaxed rules and unlimited attempts
-      - Mode affects auto-submit behavior appropriately
-      - Practice attempts don't count toward official grades
-      - Test session creation includes mode selection
-      - Mode settings apply consistently throughout test
-      - Violation detection differs between modes
-      - Timer behavior adapts to selected mode
-      - Results tracking separates practice vs graded attempts
-      - Multiple attempt functionality works in practice mode
-      - Attempt limits enforce correctly
-      - Scoring policies calculate per mode settings
-      - Mode configuration saves with test session
-      - Teacher can review attempts by mode type
-      - Industry-standard attempt management implemented
+      - Test mode allows free navigation between all questions
+      - Test mode permits submission with incomplete answers
+      - Practice mode blocks Next button until correct answer selected
+      - Practice mode blocks Submit button until all questions answered correctly
+      - Mode selection during test session creation works correctly
+      - Practice mode UI clearly indicates completion requirements
+      - Test mode shows normal navigation without restrictions
+      - Both modes capture identical analytics data (first-click, timing, behavior)
+      - Learning efficiency calculations work identically in both modes
+      - Security monitoring applies equally to both modes
+      - Question shuffling works consistently across both modes
+      - Answer choice shuffling applies to both modes equally
+      - Teacher dashboard shows same analytics regardless of mode
+      - Student results display same detailed analytics for both modes
+      - Encrypted exports include complete data for both test and practice attempts
+      - Mode switching preserves all analytics and data integrity
 
   v2.9: Class-Based Test Assignment (Post-MVP Enhancement)
     questions:
