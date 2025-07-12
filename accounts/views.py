@@ -88,6 +88,34 @@ def dashboard_view(request):
         }
         
         if profile.role == 'teacher':
+            # For teachers, get their test sessions for result viewing (v1.4)
+            teacher_sessions = TestSession.objects.filter(
+                created_by=request.user,
+                is_active=True
+            ).select_related('test').prefetch_related(
+                'studenttestattempt_set__attempt_detail'
+            ).order_by('-created_at')
+            
+            # Add result statistics to each session
+            for session in teacher_sessions:
+                completed_attempts = TestAttempt.objects.filter(
+                    student_test_attempt__test_session=session,
+                    is_submitted=True
+                )
+                session.total_attempts = completed_attempts.count()
+                session.has_results = session.total_attempts > 0
+                
+                if session.has_results:
+                    scores = []
+                    for attempt in completed_attempts:
+                        total_questions = attempt.total_questions
+                        correct_answers = attempt.answers.filter(is_correct=True).count()
+                        score_percentage = round((correct_answers / total_questions) * 100) if total_questions > 0 else 0
+                        scores.append(score_percentage)
+                    
+                    session.average_score = round(sum(scores) / len(scores)) if scores else 0
+            
+            context['teacher_sessions'] = teacher_sessions
             return render(request, 'accounts/teacher_dashboard.html', context)
         else:
             # For students, get test sessions for dashboard
@@ -643,3 +671,191 @@ def result_detail(request, attempt_id):
     except TestAttempt.DoesNotExist:
         messages.error(request, 'Test results not found.')
         return redirect('dashboard')
+
+
+@login_required
+def teacher_test_results(request, session_id):
+    """Teacher view of all student results for a test session (v1.4)"""
+    try:
+        # Get the test session
+        test_session = TestSession.objects.select_related('test', 'created_by').get(id=session_id)
+        
+        # Security check - only session creator can view results
+        if test_session.created_by != request.user:
+            messages.error(request, 'Access denied. You can only view results for tests you created.')
+            return redirect('dashboard')
+        
+        # Get all completed test attempts for this session
+        completed_attempts = TestAttempt.objects.filter(
+            student_test_attempt__test_session=test_session,
+            is_submitted=True
+        ).select_related(
+            'student_test_attempt__student',
+            'student_test_attempt__test_session__test'
+        ).prefetch_related('answers')
+        
+        # Prepare student results data
+        student_results = []
+        total_scores = []
+        completion_count = 0
+        
+        for attempt in completed_attempts:
+            student = attempt.student_test_attempt.student
+            total_questions = attempt.total_questions
+            correct_answers = attempt.answers.filter(is_correct=True).count()
+            score_percentage = round((correct_answers / total_questions) * 100) if total_questions > 0 else 0
+            
+            # Calculate completion time
+            completion_time = attempt.total_time_spent if attempt.total_time_spent else 0
+            completion_time_formatted = format_time(completion_time)
+            
+            student_result = {
+                'attempt_id': attempt.id,
+                'student_name': f"{student.first_name} {student.last_name}" if student.first_name and student.last_name else student.username,
+                'student_username': student.username,
+                'score': correct_answers,
+                'total_questions': total_questions,
+                'score_percentage': score_percentage,
+                'completion_time': completion_time,
+                'completion_time_formatted': completion_time_formatted,
+                'submitted_at': attempt.submitted_at,
+            }
+            
+            student_results.append(student_result)
+            total_scores.append(score_percentage)
+            completion_count += 1
+        
+        # Calculate basic statistics
+        statistics = {
+            'total_students': len(student_results),
+            'completion_rate': round((completion_count / len(student_results)) * 100) if student_results else 0,
+            'average_score': round(sum(total_scores) / len(total_scores)) if total_scores else 0,
+            'highest_score': max(total_scores) if total_scores else 0,
+            'lowest_score': min(total_scores) if total_scores else 0,
+        }
+        
+        # Handle sorting
+        sort_by = request.GET.get('sort', 'name')  # Default sort by name
+        if sort_by == 'score':
+            student_results.sort(key=lambda x: x['score_percentage'], reverse=True)
+        elif sort_by == 'completion_time':
+            student_results.sort(key=lambda x: x['completion_time'])
+        else:  # sort by name (default)
+            student_results.sort(key=lambda x: x['student_name'].lower())
+        
+        context = {
+            'test_session': test_session,
+            'student_results': student_results,
+            'statistics': statistics,
+            'current_sort': sort_by,
+        }
+        
+        return render(request, 'accounts/teacher_test_results.html', context)
+        
+    except TestSession.DoesNotExist:
+        messages.error(request, 'Test session not found.')
+        return redirect('dashboard')
+
+
+@login_required
+def teacher_student_detail(request, session_id, attempt_id):
+    """Teacher view of individual student's detailed answer breakdown (v1.4)"""
+    try:
+        # Get the test session and attempt
+        test_session = TestSession.objects.select_related('test', 'created_by').get(id=session_id)
+        test_attempt = TestAttempt.objects.select_related(
+            'student_test_attempt__student',
+            'student_test_attempt__test_session__test'
+        ).get(id=attempt_id)
+        
+        # Security checks
+        if test_session.created_by != request.user:
+            messages.error(request, 'Access denied. You can only view results for tests you created.')
+            return redirect('dashboard')
+        
+        if test_attempt.student_test_attempt.test_session != test_session:
+            messages.error(request, 'Test attempt does not belong to this session.')
+            return redirect('teacher_test_results', session_id=session_id)
+        
+        # Get student information
+        student = test_attempt.student_test_attempt.student
+        student_name = f"{student.first_name} {student.last_name}" if student.first_name and student.last_name else student.username
+        
+        # Calculate basic results
+        total_questions = test_attempt.total_questions
+        correct_answers = test_attempt.answers.filter(is_correct=True).count()
+        score_percentage = round((correct_answers / total_questions) * 100) if total_questions > 0 else 0
+        
+        # Get detailed question breakdown (reuse v1.3 logic)
+        answers = test_attempt.answers.select_related('question').order_by('question__id')
+        questions = test_attempt.test.questions.all().prefetch_related('choices').order_by('id')
+        
+        question_reviews = []
+        for question in questions:
+            # Find student's answer for this question
+            student_answer = answers.filter(question=question).first()
+            
+            # Get question choices
+            choices = []
+            correct_choice = None
+            for choice in question.choices.all():
+                choice_data = {
+                    'label': choice.label,
+                    'text': choice.text,
+                    'is_correct': choice.is_correct
+                }
+                choices.append(choice_data)
+                if choice.is_correct:
+                    correct_choice = choice.label
+            
+            question_review = {
+                'question': question,
+                'student_answer': student_answer,
+                'choices': choices,
+                'correct_answer': correct_choice,
+                'is_correct': student_answer.is_correct if student_answer else False,
+                'time_spent': student_answer.time_spent_seconds if student_answer else 0,
+                'time_spent_formatted': format_time(student_answer.time_spent_seconds) if student_answer and student_answer.time_spent_seconds else '0s',
+            }
+            
+            question_reviews.append(question_review)
+        
+        # Calculate total time spent
+        total_time_spent = test_attempt.total_time_spent if test_attempt.total_time_spent else 0
+        avg_time_per_question = total_time_spent // total_questions if total_questions > 0 else 0
+        
+        context = {
+            'test_session': test_session,
+            'test_attempt': test_attempt,
+            'student_name': student_name,
+            'student_username': student.username,
+            'total_questions': total_questions,
+            'correct_answers': correct_answers,
+            'score_percentage': score_percentage,
+            'question_reviews': question_reviews,
+            'total_time_spent': total_time_spent,
+            'total_time_formatted': format_time(total_time_spent),
+            'avg_time_per_question': avg_time_per_question,
+            'avg_time_per_question_formatted': format_time(avg_time_per_question),
+            'submitted_at': timezone.localtime(test_attempt.submitted_at).strftime('%B %d, %Y at %I:%M %p'),
+        }
+        
+        return render(request, 'accounts/teacher_student_detail.html', context)
+        
+    except (TestSession.DoesNotExist, TestAttempt.DoesNotExist):
+        messages.error(request, 'Test session or attempt not found.')
+        return redirect('dashboard')
+
+
+def format_time(seconds):
+    """Helper function to format time in seconds to human readable format"""
+    if seconds < 60:
+        return f"{seconds}s"
+    elif seconds < 3600:
+        minutes = seconds // 60
+        remaining_seconds = seconds % 60
+        return f"{minutes}m {remaining_seconds}s"
+    else:
+        hours = seconds // 3600
+        remaining_minutes = (seconds % 3600) // 60
+        return f"{hours}h {remaining_minutes}m"

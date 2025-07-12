@@ -26,4 +26,8 @@ urlpatterns = [
     # Test results
     path('test-results/', views.test_results, name='test_results'),
     path('test-results/<int:attempt_id>/', views.result_detail, name='result_detail'),
+    
+    # Teacher result views (v1.4)
+    path('teacher-results/<int:session_id>/', views.teacher_test_results, name='teacher_test_results'),
+    path('teacher-results/<int:session_id>/student/<int:attempt_id>/', views.teacher_student_detail, name='teacher_student_detail'),
 ]

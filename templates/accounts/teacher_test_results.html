@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block title %}Test Results: {{ test_session.test.title }} - Smart MCQ{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2>Test Results</h2>
+                <h4 class="text-muted">{{ test_session.test.title }}</h4>
+                <p class="text-muted mb-0">Session Code: <code>{{ test_session.access_code }}</code></p>
+            </div>
+            <div class="text-end">
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-primary">
+            <div class="card-body">
+                <h5 class="card-title text-primary">{{ statistics.total_students }}</h5>
+                <p class="card-text">Total Students</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-success">
+            <div class="card-body">
+                <h5 class="card-title text-success">{{ statistics.completion_rate }}%</h5>
+                <p class="card-text">Completion Rate</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-info">
+            <div class="card-body">
+                <h5 class="card-title text-info">{{ statistics.average_score }}%</h5>
+                <p class="card-text">Average Score</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-warning">
+            <div class="card-body">
+                <h5 class="card-title text-warning">{{ statistics.highest_score }}% / {{ statistics.lowest_score }}%</h5>
+                <p class="card-text">High / Low Score</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if student_results %}
+<!-- Sorting Controls -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5>Student Results ({{ student_results|length }})</h5>
+            <div class="btn-group" role="group" aria-label="Sort options">
+                <a href="?sort=name" class="btn btn-sm {% if current_sort == 'name' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                    Sort by Name
+                </a>
+                <a href="?sort=score" class="btn btn-sm {% if current_sort == 'score' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                    Sort by Score
+                </a>
+                <a href="?sort=completion_time" class="btn btn-sm {% if current_sort == 'completion_time' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                    Sort by Time
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Username</th>
+                                <th>Score</th>
+                                <th>Percentage</th>
+                                <th>Completion Time</th>
+                                <th>Submitted At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in student_results %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'teacher_student_detail' test_session.id result.attempt_id %}" 
+                                       class="text-decoration-none fw-semibold">
+                                        {{ result.student_name }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="text-muted">{{ result.student_username }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark">{{ result.score }}/{{ result.total_questions }}</span>
+                                </td>
+                                <td>
+                                    {% if result.score_percentage >= 80 %}
+                                        <span class="badge bg-success">{{ result.score_percentage }}%</span>
+                                    {% elif result.score_percentage >= 60 %}
+                                        <span class="badge bg-warning">{{ result.score_percentage }}%</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">{{ result.score_percentage }}%</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="text-muted">{{ result.completion_time_formatted }}</span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ result.submitted_at|date:"M d, Y g:i A" }}</small>
+                                </td>
+                                <td>
+                                    <a href="{% url 'teacher_student_detail' test_session.id result.attempt_id %}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> View Details
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- No Results -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-clipboard-x display-1 text-muted"></i>
+                <h4 class="text-muted mt-3">No Completed Tests</h4>
+                <p class="text-muted">No students have completed this test yet. Results will appear here once students submit their tests.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

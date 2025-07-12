@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ student_name }} - Test Results - Smart MCQ{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2>Student Test Results</h2>
+                <h4 class="text-muted">{{ test_session.test.title }}</h4>
+                <p class="text-muted mb-0">Student: <strong>{{ student_name }}</strong> ({{ student_username }})</p>
+            </div>
+            <div class="text-end">
+                <a href="{% url 'teacher_test_results' test_session.id %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Results
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Result Summary -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-primary">
+            <div class="card-body">
+                <h5 class="card-title text-primary">{{ correct_answers }}/{{ total_questions }}</h5>
+                <p class="card-text">Correct Answers</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                {% if score_percentage >= 80 %}
+                    <h5 class="card-title text-success">{{ score_percentage }}%</h5>
+                {% elif score_percentage >= 60 %}
+                    <h5 class="card-title text-warning">{{ score_percentage }}%</h5>
+                {% else %}
+                    <h5 class="card-title text-danger">{{ score_percentage }}%</h5>
+                {% endif %}
+                <p class="card-text">Score Percentage</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-info">
+            <div class="card-body">
+                <h5 class="card-title text-info">{{ total_time_formatted }}</h5>
+                <p class="card-text">Total Time</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-secondary">
+            <div class="card-body">
+                <h5 class="card-title text-secondary">{{ avg_time_per_question_formatted }}</h5>
+                <p class="card-text">Avg Time/Question</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Submission Details -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Submission Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Test:</strong> {{ test_session.test.title }}</p>
+                        <p><strong>Session Code:</strong> <code>{{ test_session.access_code }}</code></p>
+                        <p><strong>Student:</strong> {{ student_name }} ({{ student_username }})</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Submitted:</strong> {{ submitted_at }}</p>
+                        <p><strong>Total Questions:</strong> {{ total_questions }}</p>
+                        <p><strong>Pass Status:</strong> 
+                            {% if score_percentage >= 60 %}
+                                <span class="badge bg-success">PASSED</span>
+                            {% else %}
+                                <span class="badge bg-danger">FAILED</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Question-by-Question Review -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Question-by-Question Review</h5>
+            </div>
+            <div class="card-body">
+                {% for review in question_reviews %}
+                <div class="card mb-3 {% if review.is_correct %}border-success{% else %}border-danger{% endif %}">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            {% if review.is_correct %}
+                                <i class="bi bi-check-circle-fill text-success me-2 fs-5"></i>
+                                <span class="text-success fw-semibold">Question {{ forloop.counter }} - Correct</span>
+                            {% else %}
+                                <i class="bi bi-x-circle-fill text-danger me-2 fs-5"></i>
+                                <span class="text-danger fw-semibold">Question {{ forloop.counter }} - Incorrect</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-muted">
+                            <small>Time spent: {{ review.time_spent_formatted }}</small>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Question Text -->
+                        <div class="mb-3">
+                            <h6 class="fw-semibold">Question:</h6>
+                            <p class="mb-2">{{ review.question.title }}</p>
+                            {% if review.question.description %}
+                                <p class="text-muted">{{ review.question.description }}</p>
+                            {% endif %}
+                            {% if review.question.image %}
+                                <img src="{{ review.question.image.url }}" alt="Question Image" class="img-fluid mt-2" style="max-height: 200px;">
+                            {% endif %}
+                        </div>
+
+                        <!-- Answer Choices -->
+                        <div class="row">
+                            {% for choice in review.choices %}
+                            <div class="col-md-6 mb-2">
+                                <div class="choice-option p-2 rounded
+                                    {% if choice.is_correct %}bg-success bg-opacity-10 border border-success{% endif %}
+                                    {% if review.student_answer and review.student_answer.selected_choice == choice.label and not choice.is_correct %}bg-danger bg-opacity-10 border border-danger{% endif %}
+                                    {% if not choice.is_correct and not review.student_answer or review.student_answer.selected_choice != choice.label %}bg-light{% endif %}">
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-secondary me-2">{{ choice.label }}</span>
+                                        <span class="flex-grow-1">{{ choice.text }}</span>
+                                        {% if choice.is_correct %}
+                                            <i class="bi bi-check-circle-fill text-success ms-2"></i>
+                                        {% endif %}
+                                        {% if review.student_answer and review.student_answer.selected_choice == choice.label and not choice.is_correct %}
+                                            <i class="bi bi-x-circle-fill text-danger ms-2"></i>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Student Answer Summary -->
+                        <div class="mt-3 p-3 bg-light rounded">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Student Selected:</strong>
+                                    {% if review.student_answer %}
+                                        <span class="badge {% if review.is_correct %}bg-success{% else %}bg-danger{% endif %}">
+                                            Option {{ review.student_answer.selected_choice }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">No Answer</span>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Correct Answer:</strong>
+                                    <span class="badge bg-success">Option {{ review.correct_answer }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
