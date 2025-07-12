@@ -25,4 +25,5 @@ urlpatterns = [
     
     # Test results
     path('test-results/', views.test_results, name='test_results'),
+    path('test-results/<int:attempt_id>/', views.result_detail, name='result_detail'),
 ]

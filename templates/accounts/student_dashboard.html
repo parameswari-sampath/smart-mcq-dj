@@ -165,13 +165,21 @@
                                         </p>
                                         <p class="card-text">
                                             <span class="badge bg-secondary">Completed</span>
-                                            <small class="text-muted">Score: --/-- (Results will be available in v1.3)</small>
+                                            {% if session.score_percentage >= 60 %}
+                                                <span class="badge bg-success ms-1">Passed</span>
+                                            {% else %}
+                                                <span class="badge bg-warning ms-1">Review Needed</span>
+                                            {% endif %}
+                                            <small class="text-muted d-block mt-1">
+                                                Score: {{ session.correct_answers }}/{{ session.total_questions }} ({{ session.score_percentage }}%)
+                                                | Submitted: {{ session.submitted_at|date:"M d, g:i A" }}
+                                            </small>
                                         </p>
                                     </div>
                                     <div>
-                                        <button class="btn btn-outline-secondary btn-sm" disabled>
-                                            <i class="fas fa-eye"></i> View Results
-                                        </button>
+                                        <a href="{% url 'result_detail' session.attempt_id %}" class="btn btn-outline-secondary btn-sm">
+                                            <i class="fas fa-chart-line"></i> View Results
+                                        </a>
                                     </div>
                                 </div>
                             </div>

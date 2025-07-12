@@ -387,6 +387,52 @@ versions:
       - Answer choice labels (A,B,C,D) are clear
       - Results cannot be modified by students
 
+  v1.3.1: Persistent Student Result Access
+    questions:
+      - How should students access completed test results?
+      - What URL structure for individual result viewing?
+      - Should result access be time-limited or permanent?
+      - How should result links be integrated with dashboard?
+      - What security measures prevent unauthorized result access?
+      - How should result history be organized?
+    answers:
+      - Students can access any completed test results via dashboard links
+      - URL pattern: /accounts/test-results/<attempt_id>/ for individual results
+      - Permanent access to all completed tests (no time limits for MVP)
+      - Dashboard "View Results" button links to individual result pages
+      - Security: Students can only access their own test results via attempt ownership
+      - Results organized by completion date on dashboard, newest first
+    industry_solution:
+      - CANVAS APPROACH: Persistent result access via gradebook with individual submission views
+      - BLACKBOARD PATTERN: Direct links from course dashboard to individual test results
+      - SECURITY MODEL: URL-based access with ownership validation at view level
+      - USER EXPERIENCE: Seamless navigation from dashboard to detailed results
+      - MOBILE RESPONSIVE: Result viewing works across all devices consistently
+    implementation:
+      - Add URL route for individual test result viewing with attempt_id parameter
+      - Create result_detail view that fetches TestAttempt and validates ownership
+      - Update dashboard template to link "View Results" buttons to individual result URLs
+      - Maintain all v1.3 result display functionality with persistent URL access
+      - Add security checks to prevent students accessing other students' results
+      - Preserve existing result session data for immediate post-submission viewing
+    tests:
+      - Dashboard "View Results" button links to correct result URL
+      - Individual result URL loads correct test results for student
+      - Students cannot access other students' results via URL manipulation
+      - Result display matches v1.3 formatting and functionality
+      - Pie chart and question breakdown work in persistent view
+      - Mobile responsive design maintained for result access
+      - URL structure follows Django REST patterns for consistency
+      - Back to dashboard navigation works from result pages
+      - Result access works regardless of browser session state
+      - Performance optimized for loading individual results
+    notes:
+      - RESOLVES UX GAP: Students can now revisit completed test results anytime
+      - BRIDGES v0.6 to v2.3: Provides missing persistent result access functionality
+      - SECURITY FIRST: Ownership validation prevents unauthorized access
+      - MAINTAINS v1.3: All existing result display features preserved
+      - PREPARES FOR v1.4.1: Result access control will build on this foundation
+
   v1.4: Teacher Result View (Student answers & score)
     questions:
       - How should teacher view all student results?
@@ -419,6 +465,62 @@ versions:
       - Results update in real-time as students submit
       - Detailed breakdown includes question text
       - Statistics exclude incomplete attempts
+
+  v1.4.1: Result Release Control (Answer Visibility Management)
+    questions:
+      - How should teachers control when students see results?
+      - What answer visibility options should be available?
+      - Should there be different settings for practice vs graded tests?
+      - How should result release be managed for multiple students?
+      - What notification system is needed for result release?
+      - How should academic integrity be protected during result release?
+    answers:
+      - Three-tier result visibility: Score Only → Results with Answers → Enhanced Review
+      - Per-test configuration with four release modes: Immediate, Manual, Scheduled, After All Complete
+      - Test type setting: Practice (auto-release) vs Assessment (manual review required)
+      - Bulk release operations with individual override capabilities
+      - Email notifications when results are released to students
+      - Answer viewing restrictions and time windows to prevent sharing
+    industry_solution:
+      - CANVAS SPEEDGRADER MODEL: Results hidden by default, teacher controls release per student or bulk
+      - THREE-TIER VISIBILITY: Score → Answers → Feedback progression matches educational best practices
+      - ACADEMIC INTEGRITY: Delayed answer release prevents cheating between student attempts
+      - FORMATIVE vs SUMMATIVE: Different policies for learning vs assessment contexts
+      - NOTIFICATION WORKFLOW: Clear communication when results become available
+      - OVERRIDE CAPABILITY: Individual student exceptions while maintaining class policy
+      - RELEASE QUEUE: Teacher dashboard showing all pending result releases
+    implementation:
+      - Test model: result_release_mode field (immediate/manual/scheduled/after_all_complete)
+      - Test model: answer_visibility_level field (score_only/with_answers/enhanced_review)
+      - Test model: is_practice_test boolean (affects default release behavior)
+      - TestAttempt model: result_released_at timestamp, released_by teacher
+      - Result release management interface in teacher dashboard
+      - Student result view respects release settings and visibility levels
+      - Email notification system for result release events
+      - Bulk operations for releasing multiple student results
+    tests:
+      - Test creation form includes result release configuration
+      - Practice tests default to immediate release, assessments to manual
+      - Teacher can set release mode: immediate/manual/scheduled/after_all_complete
+      - Answer visibility levels work: score_only/with_answers/enhanced_review
+      - Manual release shows teacher dashboard with pending results queue
+      - Bulk release operations work for multiple students simultaneously
+      - Individual student result release override functionality
+      - Students see appropriate content based on release settings
+      - Email notifications sent when results are released
+      - Scheduled release triggers automatically at specified time
+      - "After all complete" waits for all students before releasing any results
+      - Academic integrity: answer viewing restrictions prevent sharing
+      - Result release history tracking for audit purposes
+      - Mobile-responsive release management interface
+      - Performance optimized for large classes with many results
+      - Error handling for failed release operations
+    notes:
+      - RESOLVES v1.3 CONFLICT: Teachers now control when students see correct answers
+      - INDUSTRY STANDARD: Matches Canvas, Blackboard, Moodle best practices
+      - PEDAGOGICAL FLEXIBILITY: Supports both formative and summative assessment needs
+      - ACADEMIC INTEGRITY: Prevents answer sharing between students taking test at different times
+      - TEACHER WORKFLOW: Efficient bulk operations while allowing individual exceptions
 
   v1.5: Tab Switch Tracking and Focus Loss Detection
     questions:

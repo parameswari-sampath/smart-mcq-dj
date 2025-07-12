@@ -101,21 +101,46 @@ def dashboard_view(request):
             student_attempts = StudentTestAttempt.objects.filter(student=request.user).select_related('test_session')
             joined_session_ids = set(attempt.test_session.id for attempt in student_attempts)
             
+            # Get student's completed test attempts for result viewing (v1.3.1)
+            completed_attempts = TestAttempt.objects.filter(
+                student_test_attempt__student=request.user,
+                is_submitted=True
+            ).select_related(
+                'student_test_attempt__test_session__test',
+                'student_test_attempt__test_session__created_by'
+            ).order_by('-submitted_at')
+            
             # Categorize sessions by status
             upcoming_sessions = []
             ongoing_sessions = []
-            completed_sessions = []  # For now, empty since we don't track student attempts yet
+            completed_sessions = []
             
             for session in all_sessions:
                 # Add joined status to session object
                 session.has_joined = session.id in joined_session_ids
-                
                 
                 if session.status == 'upcoming':
                     upcoming_sessions.append(session)
                 elif session.status == 'active':
                     ongoing_sessions.append(session)
                 # expired sessions are not shown in student dashboard
+            
+            # Add completed attempts as completed sessions with result data
+            for attempt in completed_attempts:
+                session = attempt.student_test_attempt.test_session
+                # Calculate basic results for dashboard display
+                total_questions = attempt.total_questions
+                correct_answers = attempt.answers.filter(is_correct=True).count()
+                score_percentage = round((correct_answers / total_questions) * 100) if total_questions > 0 else 0
+                
+                # Add result data to session object for template
+                session.attempt_id = attempt.id
+                session.score_percentage = score_percentage
+                session.correct_answers = correct_answers
+                session.total_questions = total_questions
+                session.submitted_at = attempt.submitted_at
+                
+                completed_sessions.append(session)
             
             context.update({
                 'upcoming_sessions': upcoming_sessions,
@@ -487,12 +512,134 @@ def test_results(request):
         messages.error(request, 'No test results found.')
         return redirect('dashboard')
     
+    # Get detailed answer breakdown for v1.3
+    try:
+        test_attempt = TestAttempt.objects.select_related(
+            'student_test_attempt__test_session__test'
+        ).prefetch_related(
+            'answers__question__choices'
+        ).get(id=results['attempt_id'])
+        
+        # Build detailed question review data
+        question_reviews = []
+        for question in test_attempt.test.questions.all():
+            student_answer = test_attempt.answers.filter(question=question).first()
+            correct_choice = question.choices.filter(is_correct=True).first()
+            
+            question_review = {
+                'question': question,
+                'student_answer': student_answer,
+                'correct_choice': correct_choice,
+                'is_answered': student_answer is not None,
+                'is_correct': student_answer.is_correct if student_answer else False,
+                'student_choice_text': student_answer.question.choices.filter(label=student_answer.selected_choice).first().text if student_answer else None,
+                'correct_choice_text': correct_choice.text if correct_choice else None,
+                'time_spent': student_answer.time_spent_seconds if student_answer else 0,
+            }
+            question_reviews.append(question_review)
+        
+    except TestAttempt.DoesNotExist:
+        messages.error(request, 'Test attempt details not found.')
+        return redirect('dashboard')
+    
     # Clear results from session after displaying
     del request.session['test_results']
     
     context = {
         'results': results,
         'passed': results['score_percentage'] >= 60,  # 60% pass threshold
+        'question_reviews': question_reviews,
+        'test_attempt': test_attempt,
     }
     
     return render(request, 'accounts/test_results.html', context)
+
+
+@login_required
+def result_detail(request, attempt_id):
+    """Display persistent test results for a specific attempt (v1.3.1)"""
+    try:
+        test_attempt = TestAttempt.objects.select_related(
+            'student_test_attempt__test_session__test',
+            'student_test_attempt__student'
+        ).prefetch_related(
+            'answers__question__choices'
+        ).get(id=attempt_id)
+        
+        # Security check: only the student who owns this attempt can access it
+        if test_attempt.student != request.user:
+            messages.error(request, 'Access denied. You can only view your own test results.')
+            return redirect('dashboard')
+        
+        # Check if test is submitted
+        if not test_attempt.is_submitted:
+            messages.error(request, 'This test has not been submitted yet.')
+            return redirect('dashboard')
+        
+        # Build detailed question review data (same as v1.3)
+        question_reviews = []
+        for question in test_attempt.test.questions.all():
+            student_answer = test_attempt.answers.filter(question=question).first()
+            correct_choice = question.choices.filter(is_correct=True).first()
+            
+            question_review = {
+                'question': question,
+                'student_answer': student_answer,
+                'correct_choice': correct_choice,
+                'is_answered': student_answer is not None,
+                'is_correct': student_answer.is_correct if student_answer else False,
+                'student_choice_text': student_answer.question.choices.filter(label=student_answer.selected_choice).first().text if student_answer else None,
+                'correct_choice_text': correct_choice.text if correct_choice else None,
+                'time_spent': student_answer.time_spent_seconds if student_answer else 0,
+            }
+            question_reviews.append(question_review)
+        
+        # Calculate results data (same as submit_test view)
+        total_questions = test_attempt.total_questions
+        correct_answers = test_attempt.answers.filter(is_correct=True).count()
+        score_percentage = round((correct_answers / total_questions) * 100) if total_questions > 0 else 0
+        
+        # Format time for display
+        def format_time(seconds):
+            hours = seconds // 3600
+            minutes = (seconds % 3600) // 60
+            secs = seconds % 60
+            if hours > 0:
+                return f"{hours}h {minutes}m {secs}s"
+            elif minutes > 0:
+                return f"{minutes}m {secs}s"
+            else:
+                return f"{secs}s"
+        
+        # Calculate times
+        total_time_spent = test_attempt.total_time_spent
+        avg_time_per_question = int(total_time_spent / total_questions) if total_questions > 0 else 0
+        
+        # Create results data structure
+        results = {
+            'attempt_id': test_attempt.id,
+            'total_questions': total_questions,
+            'correct_answers': correct_answers,
+            'incorrect_answers': total_questions - correct_answers,
+            'score_percentage': score_percentage,
+            'test_title': test_attempt.test.title,
+            'total_time_spent': total_time_spent,
+            'total_time_formatted': format_time(total_time_spent),
+            'avg_time_per_question': avg_time_per_question,
+            'avg_time_per_question_formatted': format_time(avg_time_per_question),
+            'submitted_at': timezone.localtime(test_attempt.submitted_at).strftime('%B %d, %Y at %I:%M %p'),
+        }
+        
+        context = {
+            'results': results,
+            'passed': score_percentage >= 60,  # 60% pass threshold
+            'question_reviews': question_reviews,
+            'test_attempt': test_attempt,
+            'is_persistent_view': True,  # Flag to distinguish from post-submission view
+        }
+        
+        return render(request, 'accounts/test_results.html', context)
+        
+    except TestAttempt.DoesNotExist:
+        messages.error(request, 'Test results not found.')
+        return redirect('dashboard')

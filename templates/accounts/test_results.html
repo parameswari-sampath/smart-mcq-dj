@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container">
     <div class="row justify-content-center">
-        <div class="col-lg-8">
+        <div class="col-lg-10">
             <!-- Results Card -->
             <div class="card">
                 <div class="card-header text-center {% if passed %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
@@ -78,7 +78,7 @@
                         </div>
                     </div>
                     
-                    <!-- Performance Summary -->
+                    <!-- Performance Summary with Pie Chart -->
                     <div class="row">
                         <div class="col-md-6">
                             <h6><i class="fas fa-chart-pie"></i> Performance Summary</h6>
@@ -90,6 +90,16 @@
                             </ul>
                         </div>
                         <div class="col-md-6">
+                            <h6><i class="fas fa-pie-chart"></i> Answer Distribution</h6>
+                            <div class="d-flex justify-content-center">
+                                <canvas id="resultsPieChart" width="200" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Result Status -->
+                    <div class="row mt-4">
+                        <div class="col-12">
                             <h6><i class="fas fa-info-circle"></i> Result Status</h6>
                             {% if passed %}
                             <div class="alert alert-success">
@@ -105,43 +115,139 @@
                         </div>
                     </div>
                 </div>
-                
-                <!-- Actions -->
-                <div class="card-footer text-center">
-                    <a href="{% url 'dashboard' %}" class="btn btn-primary">
-                        <i class="fas fa-home"></i> Return to Dashboard
-                    </a>
+            </div>
+            
+            <!-- Detailed Question Review -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list-alt"></i> Question Review</h5>
+                    <small class="text-muted">Review your answers vs correct answers</small>
+                </div>
+                <div class="card-body">
+                    {% for review in question_reviews %}
+                    <div class="mb-4 p-3 border rounded">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h6 class="mb-2">
+                                    <span class="badge badge-secondary me-2">Q{{ forloop.counter }}</span>
+                                    {{ review.question.title }}
+                                    {% if review.is_correct %}
+                                        <i class="fas fa-check-circle text-success ms-2" title="Correct"></i>
+                                    {% elif review.is_answered %}
+                                        <i class="fas fa-times-circle text-danger ms-2" title="Incorrect"></i>
+                                    {% else %}
+                                        <i class="fas fa-question-circle text-warning ms-2" title="Not Answered"></i>
+                                    {% endif %}
+                                </h6>
+                                <p class="text-muted mb-3">{{ review.question.description }}</p>
+                                
+                                <!-- Answer Choices with Visual Indicators -->
+                                <div class="row">
+                                    {% for choice in review.question.choices.all %}
+                                    <div class="col-md-6 mb-2">
+                                        <div class="p-2 border rounded 
+                                            {% if choice.is_correct %}bg-success text-white
+                                            {% elif review.student_answer and choice.label == review.student_answer.selected_choice and not choice.is_correct %}bg-danger text-white
+                                            {% endif %}">
+                                            <strong>{{ choice.label }}.</strong> {{ choice.text }}
+                                            {% if choice.is_correct %}
+                                                <i class="fas fa-check-circle float-end"></i>
+                                            {% elif review.student_answer and choice.label == review.student_answer.selected_choice and not choice.is_correct %}
+                                                <i class="fas fa-times-circle float-end"></i>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                
+                                <!-- Answer Summary -->
+                                <div class="mt-3">
+                                    <small class="text-muted">
+                                        <strong>Your Answer:</strong> 
+                                        {% if review.student_answer %}
+                                            {{ review.student_answer.selected_choice }} - {{ review.student_choice_text }}
+                                            {% if review.is_correct %}
+                                                <span class="text-success">(Correct)</span>
+                                            {% else %}
+                                                <span class="text-danger">(Incorrect)</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-warning">Not Answered</span>
+                                        {% endif %}
+                                    </small><br>
+                                    <small class="text-muted">
+                                        <strong>Correct Answer:</strong> {{ review.correct_choice.label }} - {{ review.correct_choice_text }}
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <div class="p-3">
+                                    {% if review.is_correct %}
+                                        <i class="fas fa-check-circle fa-3x text-success"></i>
+                                        <h6 class="text-success mt-2">Correct</h6>
+                                    {% elif review.is_answered %}
+                                        <i class="fas fa-times-circle fa-3x text-danger"></i>
+                                        <h6 class="text-danger mt-2">Incorrect</h6>
+                                    {% else %}
+                                        <i class="fas fa-question-circle fa-3x text-warning"></i>
+                                        <h6 class="text-warning mt-2">Not Answered</h6>
+                                    {% endif %}
+                                    {% if review.time_spent > 0 %}
+                                        <small class="text-muted d-block mt-2">
+                                            <i class="fas fa-clock"></i> {{ review.time_spent }}s
+                                        </small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
             
-            <!-- Additional Information -->
-            <div class="card mt-4">
-                <div class="card-body">
-                    <h6><i class="fas fa-lightbulb"></i> What's Next?</h6>
-                    <div class="row">
-                        {% if passed %}
-                        <div class="col-md-6">
-                            <h6 class="text-success">Great Job!</h6>
-                            <p class="small">You've demonstrated good understanding of the material. Keep up the excellent work!</p>
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="text-info">Continue Learning</h6>
-                            <p class="small">Look out for more advanced tests to further challenge your knowledge.</p>
-                        </div>
-                        {% else %}
-                        <div class="col-md-6">
-                            <h6 class="text-warning">Areas for Improvement</h6>
-                            <p class="small">Review the topics covered in this test and practice more to improve your understanding.</p>
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="text-info">Next Steps</h6>
-                            <p class="small">Consider retaking similar practice tests to strengthen your knowledge.</p>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
+            <!-- Actions -->
+            <div class="text-center mt-4 mb-4">
+                <a href="{% url 'dashboard' %}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-home"></i> Return to Dashboard
+                </a>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Chart.js for Pie Chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Pie Chart for Answer Distribution
+    const ctx = document.getElementById('resultsPieChart').getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Correct', 'Incorrect'],
+            datasets: [{
+                data: [{{ results.correct_answers }}, {{ results.incorrect_answers }}],
+                backgroundColor: [
+                    '#28a745', // green for correct
+                    '#dc3545'  // red for incorrect
+                ],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                },
+                title: {
+                    display: false
+                }
+            }
+        }
+    });
+});
+</script>
 {% endblock %}

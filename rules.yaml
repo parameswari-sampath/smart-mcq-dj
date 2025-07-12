@@ -68,7 +68,14 @@ development_discipline:
     - Document any deviations with reasons
 
 logging_rules:
-  update_dev_log_yaml:
+  log_file_management:
+    location: "/logs/ directory with numbered sequence"
+    current_log: "Latest numbered log file (e.g., log_3.yaml)"
+    file_size_limit: "500 lines maximum per log file"
+    rollover: "Create new log file when 500 lines exceeded"
+    current_status: "logs/current.yaml for version progress only"
+    
+  update_log_files:
     when:
       - Every user prompt received
       - Every file created or modified
@@ -76,17 +83,24 @@ logging_rules:
       - Every issue encountered and resolved
     
     format:
-      - Add new session entry with date
+      - Add new prompt entry with date and prompt_id
       - List user requests clearly
       - Document actions taken
       - Note files created/modified/deleted
-      - Update version progress if applicable
-      - Set session status (completed/in_progress/blocked)
+      - Update logs/current.yaml for version progress only
+      - Set prompt status (completed/in_progress/blocked)
+      
+    file_rotation:
+      - Check current log file length before adding entries
+      - If exceeds 500 lines, create new log_X.yaml file
+      - Continue logging in new file with incremented number
+      - Update current.yaml only for version completion status
 
 file_management:
   core_files:
     - version.yaml (project specification)
-    - dev_log.yaml (development history)
+    - logs/current.yaml (version progress status only)
+    - logs/log_X.yaml (detailed development history)
     - CLAUDE.md (project guidance)
     - rules.yaml (this file)
     - docker-compose.yml (database setup)
@@ -94,7 +108,7 @@ file_management:
   
   never_delete:
     - version.yaml
-    - dev_log.yaml
+    - logs/ directory and all log files
     - CLAUDE.md
     - rules.yaml
 
