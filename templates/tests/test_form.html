@@ -49,6 +49,54 @@
                         </div>
                     </div>
 
+                    <!-- Result Release Control (v1.4.1) -->
+                    <h5 class="mb-3 mt-4">Result Release Settings</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="is_practice_test" class="form-label">Test Type *</label>
+                            <select class="form-select" id="is_practice_test" name="is_practice_test" required>
+                                <option value="True" {% if test.is_practice_test %}selected{% endif %}>Practice Test (auto-release results)</option>
+                                <option value="False" {% if test and not test.is_practice_test %}selected{% endif %}>Assessment Test (manual review required)</option>
+                            </select>
+                            <small class="form-text text-muted">Practice tests auto-release results, assessments require teacher approval</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="result_release_mode" class="form-label">Release Mode *</label>
+                            <select class="form-select" id="result_release_mode" name="result_release_mode" required>
+                                <option value="immediate" {% if test.result_release_mode == 'immediate' %}selected{% endif %}>Immediate (auto-release on completion)</option>
+                                <option value="manual" {% if test.result_release_mode == 'manual' %}selected{% endif %}>Manual (teacher controls release)</option>
+                                <option value="scheduled" {% if test.result_release_mode == 'scheduled' %}selected{% endif %}>Scheduled (release at specific time)</option>
+                                <option value="after_all_complete" {% if test.result_release_mode == 'after_all_complete' %}selected{% endif %}>After All Complete (wait for all students)</option>
+                            </select>
+                            <small class="form-text text-muted">Controls when students can view their results</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="answer_visibility_level" class="form-label">Answer Visibility *</label>
+                            <select class="form-select" id="answer_visibility_level" name="answer_visibility_level" required>
+                                <option value="score_only" {% if test.answer_visibility_level == 'score_only' %}selected{% endif %}>Score Only (basic score and percentage)</option>
+                                <option value="with_answers" {% if test.answer_visibility_level == 'with_answers' %}selected{% endif %}>Results with Answers (show correct vs student answers)</option>
+                                <option value="enhanced_review" {% if test.answer_visibility_level == 'enhanced_review' %}selected{% endif %}>Enhanced Review (full detailed breakdown)</option>
+                            </select>
+                            <small class="form-text text-muted">Controls what students see in their results</small>
+                        </div>
+                    </div>
+
+                    <!-- Scheduled Release Time (conditional) -->
+                    <div class="row mb-3" id="scheduledReleaseRow" style="display: none;">
+                        <div class="col-md-6">
+                            <label for="scheduled_release_time" class="form-label">Scheduled Release Date & Time</label>
+                            <input type="datetime-local" class="form-control" id="scheduled_release_time" name="scheduled_release_time" 
+                                   value="{% if test.scheduled_release_time %}{{ test.scheduled_release_time|date:'Y-m-d\TH:i' }}{% endif %}">
+                            <small class="form-text text-muted">When to automatically release results (required for scheduled mode)</small>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-info mt-4 mb-0">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Scheduled Release:</strong> Results will be automatically released at the specified time, regardless of completion status.
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Question Selection -->
                     <h5 class="mb-3">Select Questions</h5>
                     {% if available_questions %}
@@ -129,6 +177,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Question selection functionality
     const selectAllCheckbox = document.getElementById('selectAll');
     const questionCheckboxes = document.querySelectorAll('.question-checkbox');
     const selectedCount = document.getElementById('selectedCount');
@@ -138,12 +187,14 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedCount.textContent = checked + ' selected';
     }
     
-    selectAllCheckbox.addEventListener('change', function() {
-        questionCheckboxes.forEach(checkbox => {
-            checkbox.checked = this.checked;
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            questionCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateSelectedCount();
         });
-        updateSelectedCount();
-    });
+    }
     
     questionCheckboxes.forEach(checkbox => {
         checkbox.addEventListener('change', updateSelectedCount);
@@ -151,6 +202,77 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initial count
     updateSelectedCount();
+
+    // Result Release Control functionality (v1.4.1)
+    const releaseModeSelect = document.getElementById('result_release_mode');
+    const scheduledReleaseRow = document.getElementById('scheduledReleaseRow');
+    const scheduledReleaseInput = document.getElementById('scheduled_release_time');
+    const testTypeSelect = document.getElementById('is_practice_test');
+    
+    function toggleScheduledRelease() {
+        const isScheduled = releaseModeSelect.value === 'scheduled';
+        scheduledReleaseRow.style.display = isScheduled ? 'block' : 'none';
+        scheduledReleaseInput.required = isScheduled;
+        
+        if (!isScheduled) {
+            scheduledReleaseInput.value = '';
+        }
+    }
+    
+    function updateReleaseModeDefaults() {
+        const isPractice = testTypeSelect.value === 'True';
+        
+        // Set appropriate defaults based on test type
+        if (isPractice && releaseModeSelect.value === 'manual') {
+            releaseModeSelect.value = 'immediate';
+        } else if (!isPractice && releaseModeSelect.value === 'immediate') {
+            releaseModeSelect.value = 'manual';
+        }
+        
+        toggleScheduledRelease();
+    }
+    
+    // Event listeners for release control
+    releaseModeSelect.addEventListener('change', toggleScheduledRelease);
+    testTypeSelect.addEventListener('change', updateReleaseModeDefaults);
+    
+    // Initial setup
+    toggleScheduledRelease();
+    
+    // Form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const checkedQuestions = document.querySelectorAll('.question-checkbox:checked').length;
+        
+        if (checkedQuestions === 0) {
+            e.preventDefault();
+            alert('Please select at least one question for the test.');
+            return false;
+        }
+        
+        // Validate scheduled release time
+        if (releaseModeSelect.value === 'scheduled') {
+            const releaseTime = scheduledReleaseInput.value;
+            if (!releaseTime) {
+                e.preventDefault();
+                alert('Please specify a scheduled release date and time.');
+                scheduledReleaseInput.focus();
+                return false;
+            }
+            
+            // Check if release time is in the future
+            const releaseDate = new Date(releaseTime);
+            const now = new Date();
+            if (releaseDate <= now) {
+                e.preventDefault();
+                alert('Scheduled release time must be in the future.');
+                scheduledReleaseInput.focus();
+                return false;
+            }
+        }
+        
+        return true;
+    });
 });
 </script>
 {% endblock %}

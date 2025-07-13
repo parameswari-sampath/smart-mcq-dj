@@ -25,6 +25,7 @@
                                     <th>Category</th>
                                     <th>Questions</th>
                                     <th>Time Limit</th>
+                                    <th>Release Settings</th>
                                     <th>Created</th>
                                     <th>Actions</th>
                                 </tr>
@@ -50,6 +51,15 @@
                                         <small class="text-muted">{{ test.get_total_marks }} marks</small>
                                     </td>
                                     <td>{{ test.time_limit_minutes }} min</td>
+                                    <td>
+                                        <span class="badge {% if test.is_practice_test %}bg-success{% else %}bg-warning{% endif %} mb-1">
+                                            {% if test.is_practice_test %}Practice{% else %}Assessment{% endif %}
+                                        </span>
+                                        <br>
+                                        <small class="text-muted">{{ test.get_result_release_mode_display }}</small>
+                                        <br>
+                                        <small class="text-muted">{{ test.get_answer_visibility_level_display }}</small>
+                                    </td>
                                     <td>{{ test.created_at|date:"M d, Y" }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">

@@ -39,14 +39,24 @@ def test_list(request):
 def test_create(request):
     """Create a new test with question selection"""
     if request.method == 'POST':
-        # Create test
+        # Handle scheduled release time
+        scheduled_release_time = None
+        if request.POST.get('result_release_mode') == 'scheduled':
+            scheduled_release_time = request.POST.get('scheduled_release_time')
+        
+        # Create test with v1.4.1 result release control fields
         test = Test.objects.create(
             title=request.POST['title'],
             description=request.POST['description'],
             time_limit_minutes=int(request.POST['time_limit_minutes']),
             category=request.POST.get('category', ''),
             organization=request.user.profile.organization,
-            created_by=request.user
+            created_by=request.user,
+            # v1.4.1 Result Release Control fields
+            is_practice_test=request.POST.get('is_practice_test', 'True') == 'True',
+            result_release_mode=request.POST.get('result_release_mode', 'immediate'),
+            answer_visibility_level=request.POST.get('answer_visibility_level', 'with_answers'),
+            scheduled_release_time=scheduled_release_time
         )
         
         # Add selected questions to test
@@ -54,7 +64,7 @@ def test_create(request):
         if selected_questions:
             test.questions.set(selected_questions)
         
-        messages.success(request, 'Test created successfully!')
+        messages.success(request, f'{"Practice" if test.is_practice_test else "Assessment"} test created successfully with {test.get_result_release_mode_display().lower()} release mode!')
         return redirect('tests:test_list')
     
     # Get available questions for selection
@@ -80,18 +90,28 @@ def test_edit(request, pk):
     )
     
     if request.method == 'POST':
-        # Update test
+        # Handle scheduled release time
+        scheduled_release_time = None
+        if request.POST.get('result_release_mode') == 'scheduled':
+            scheduled_release_time = request.POST.get('scheduled_release_time')
+        
+        # Update test with v1.4.1 result release control fields
         test.title = request.POST['title']
         test.description = request.POST['description']
         test.time_limit_minutes = int(request.POST['time_limit_minutes'])
         test.category = request.POST.get('category', '')
+        # v1.4.1 Result Release Control fields
+        test.is_practice_test = request.POST.get('is_practice_test', 'True') == 'True'
+        test.result_release_mode = request.POST.get('result_release_mode', 'immediate')
+        test.answer_visibility_level = request.POST.get('answer_visibility_level', 'with_answers')
+        test.scheduled_release_time = scheduled_release_time
         test.save()
         
         # Update selected questions
         selected_questions = request.POST.getlist('questions')
         test.questions.set(selected_questions)
         
-        messages.success(request, 'Test updated successfully!')
+        messages.success(request, f'{"Practice" if test.is_practice_test else "Assessment"} test updated successfully with {test.get_result_release_mode_display().lower()} release mode!')
         return redirect('tests:test_list')
     
     # Get available questions for selection

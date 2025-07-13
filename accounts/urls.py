@@ -30,4 +30,8 @@ urlpatterns = [
     # Teacher result views (v1.4)
     path('teacher-results/<int:session_id>/', views.teacher_test_results, name='teacher_test_results'),
     path('teacher-results/<int:session_id>/student/<int:attempt_id>/', views.teacher_student_detail, name='teacher_student_detail'),
+    
+    # Result release management (v1.4.1)
+    path('teacher-results/<int:session_id>/release-management/', views.teacher_result_release_management, name='teacher_result_release_management'),
+    path('teacher-results/<int:session_id>/release/<int:attempt_id>/', views.individual_result_release, name='individual_result_release'),
 ]

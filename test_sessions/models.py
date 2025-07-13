@@ -18,6 +18,11 @@ def generate_access_code():
 class TestSession(models.Model):
     """Test session model for scheduling tests with access codes"""
     test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name='sessions')
+    session_name = models.CharField(
+        max_length=200, 
+        help_text="Custom name for this session (e.g., 'Math Quiz - Class 10A')",
+        blank=True
+    )
     access_code = models.CharField(max_length=6, default=generate_access_code, unique=True)
     start_time = models.DateTimeField()
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -29,7 +34,14 @@ class TestSession(models.Model):
         ordering = ['-start_time']
 
     def __str__(self):
+        if self.session_name:
+            return f"{self.session_name} ({self.test.title}) - {self.access_code}"
         return f"{self.test.title} - {self.access_code}"
+    
+    @property
+    def display_name(self):
+        """Get the display name for this session"""
+        return self.session_name if self.session_name else self.test.title
 
     @property
     def end_time(self):
@@ -97,6 +109,21 @@ class TestAttempt(models.Model):
     is_submitted = models.BooleanField(default=False)
     total_time_spent = models.IntegerField(default=0)  # in seconds
     
+    # v1.4.1: Result Release Control fields
+    result_released_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When results were released to this student"
+    )
+    released_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='released_results',
+        help_text="Teacher who released the results"
+    )
+    
     class Meta:
         ordering = ['-started_at']
     
@@ -144,6 +171,101 @@ class TestAttempt(models.Model):
     @property
     def is_first_question(self):
         return self.current_question_index <= 0
+    
+    # v1.4.1: Result Release Control methods
+    @property
+    def is_result_released(self):
+        """Check if results have been released to the student"""
+        return self.result_released_at is not None
+    
+    @property
+    def can_view_results(self):
+        """Check if student can view results based on test release settings and timer completion"""
+        if not self.is_submitted:
+            return False
+        
+        test = self.test
+        test_session = self.test_session
+        
+        # CORE RULE: Results only available after test timer expires (start + duration)
+        # Calculate when test period ends for this session
+        if test_session.start_time:
+            test_end_time = test_session.start_time + timezone.timedelta(minutes=test.time_limit_minutes)
+            if timezone.now() < test_end_time:
+                # Test timer hasn't expired yet - no results regardless of release mode
+                return False
+        
+        # Timer has expired, now check release mode
+        if test.result_release_mode == 'immediate':
+            return True
+        elif test.result_release_mode == 'manual':
+            return self.is_result_released
+        elif test.result_release_mode == 'scheduled':
+            if test.scheduled_release_time and timezone.now() >= test.scheduled_release_time:
+                return True
+            return self.is_result_released
+        elif test.result_release_mode == 'after_all_complete':
+            # Check if all students have completed the test
+            all_attempts = TestAttempt.objects.filter(
+                student_test_attempt__test_session=self.test_session,
+                is_submitted=True
+            )
+            session_students = StudentTestAttempt.objects.filter(
+                test_session=self.test_session
+            ).count()
+            return all_attempts.count() >= session_students
+        
+        return False
+    
+    @property
+    def result_availability_info(self):
+        """Get information about when results will be available"""
+        if not self.is_submitted:
+            return "Complete the test first"
+        
+        test = self.test
+        test_session = self.test_session
+        
+        # Check timer first
+        if test_session.start_time:
+            test_end_time = test_session.start_time + timezone.timedelta(minutes=test.time_limit_minutes)
+            if timezone.now() < test_end_time:
+                time_remaining = test_end_time - timezone.now()
+                minutes_remaining = int(time_remaining.total_seconds() / 60)
+                return f"Results available after exam time expires (in {minutes_remaining} minutes)"
+        
+        # Timer expired, check release mode
+        if test.result_release_mode == 'immediate':
+            return "Results available now"
+        elif test.result_release_mode == 'manual':
+            if self.is_result_released:
+                return "Results available now"
+            return "Results pending teacher approval"
+        elif test.result_release_mode == 'scheduled':
+            if test.scheduled_release_time:
+                if timezone.now() >= test.scheduled_release_time:
+                    return "Results available now"
+                return f"Results scheduled for {test.scheduled_release_time.strftime('%B %d, %Y at %I:%M %p')}"
+            return "Results pending teacher approval"
+        elif test.result_release_mode == 'after_all_complete':
+            all_attempts = TestAttempt.objects.filter(
+                student_test_attempt__test_session=self.test_session,
+                is_submitted=True
+            ).count()
+            session_students = StudentTestAttempt.objects.filter(
+                test_session=self.test_session
+            ).count()
+            if all_attempts >= session_students:
+                return "Results available now"
+            return f"Results available when all students complete ({all_attempts}/{session_students} completed)"
+        
+        return "Results not yet available"
+    
+    def release_result(self, released_by_user):
+        """Release results to this student"""
+        self.result_released_at = timezone.now()
+        self.released_by = released_by_user
+        self.save()
 
 
 class Answer(models.Model):

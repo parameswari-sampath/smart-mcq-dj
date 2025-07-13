@@ -25,9 +25,20 @@
                         <div class="col-md-6">
                             <h5>Test Information</h5>
                             <table class="table table-borderless">
+                                {% if session.session_name %}
+                                <tr>
+                                    <td><strong>Session Name:</strong></td>
+                                    <td><strong class="text-primary">{{ session.session_name }}</strong></td>
+                                </tr>
+                                {% endif %}
                                 <tr>
                                     <td><strong>Test Title:</strong></td>
-                                    <td>{{ session.test.title }}</td>
+                                    <td>
+                                        <span class="badge {% if session.test.is_practice_test %}bg-success{% else %}bg-warning{% endif %} me-2">
+                                            {% if session.test.is_practice_test %}[PTC]{% else %}[TST]{% endif %}
+                                        </span>
+                                        {{ session.test.title }}
+                                    </td>
                                 </tr>
                                 <tr>
                                     <td><strong>Description:</strong></td>

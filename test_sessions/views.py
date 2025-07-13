@@ -56,6 +56,7 @@ def session_create(request):
             
             session = TestSession.objects.create(
                 test=test,
+                session_name=request.POST.get('session_name', '').strip(),
                 start_time=start_datetime,
                 created_by=request.user
             )
@@ -110,6 +111,7 @@ def session_edit(request, pk):
                 messages.error(request, 'Start time must be in the future. Please select a future date and time.')
                 return redirect('test_sessions:session_edit', pk=pk)
             
+            session.session_name = request.POST.get('session_name', '').strip()
             session.start_time = start_datetime
             session.save()
             

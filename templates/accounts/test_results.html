@@ -117,7 +117,23 @@
                 </div>
             </div>
             
-            <!-- Detailed Question Review -->
+            <!-- Detailed Question Review - Based on Answer Visibility Level -->
+            {% if test_attempt.test.answer_visibility_level == 'score_only' %}
+            <!-- Score Only Mode: No detailed answers shown -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Result Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Score Only View</strong><br>
+                        Your teacher has configured this test to show only scores. Detailed answers and explanations are not available.
+                    </div>
+                </div>
+            </div>
+            {% elif test_attempt.test.answer_visibility_level == 'with_answers' %}
+            <!-- With Answers Mode: Show correct vs student answers -->
             <div class="card mt-4">
                 <div class="card-header">
                     <h5 class="mb-0"><i class="fas fa-list-alt"></i> Question Review</h5>
@@ -204,6 +220,114 @@
                     {% endfor %}
                 </div>
             </div>
+            {% elif test_attempt.test.answer_visibility_level == 'enhanced_review' %}
+            <!-- Enhanced Review Mode: Full detailed breakdown with explanations -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-search-plus"></i> Enhanced Question Review</h5>
+                    <small class="text-muted">Detailed breakdown with explanations and time analysis</small>
+                </div>
+                <div class="card-body">
+                    {% for review in question_reviews %}
+                    <div class="mb-4 p-3 border rounded">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h6 class="mb-2">
+                                    <span class="badge badge-secondary me-2">Q{{ forloop.counter }}</span>
+                                    {{ review.question.title }}
+                                    {% if review.is_correct %}
+                                        <i class="fas fa-check-circle text-success ms-2" title="Correct"></i>
+                                    {% elif review.is_answered %}
+                                        <i class="fas fa-times-circle text-danger ms-2" title="Incorrect"></i>
+                                    {% else %}
+                                        <i class="fas fa-question-circle text-warning ms-2" title="Not Answered"></i>
+                                    {% endif %}
+                                </h6>
+                                <p class="text-muted mb-3">{{ review.question.description }}</p>
+                                
+                                <!-- Answer Choices with Enhanced Visual Indicators -->
+                                <div class="row">
+                                    {% for choice in review.question.choices.all %}
+                                    <div class="col-md-6 mb-2">
+                                        <div class="p-2 border rounded 
+                                            {% if choice.is_correct %}bg-success text-white
+                                            {% elif review.student_answer and choice.label == review.student_answer.selected_choice and not choice.is_correct %}bg-danger text-white
+                                            {% endif %}">
+                                            <strong>{{ choice.label }}.</strong> {{ choice.text }}
+                                            {% if choice.is_correct %}
+                                                <i class="fas fa-check-circle float-end"></i>
+                                                <div class="mt-1"><small>✓ Correct Answer</small></div>
+                                            {% elif review.student_answer and choice.label == review.student_answer.selected_choice and not choice.is_correct %}
+                                                <i class="fas fa-times-circle float-end"></i>
+                                                <div class="mt-1"><small>✗ Your Selection</small></div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                
+                                <!-- Enhanced Answer Summary -->
+                                <div class="mt-3">
+                                    <small class="text-muted">
+                                        <strong>Your Answer:</strong> 
+                                        {% if review.student_answer %}
+                                            {{ review.student_answer.selected_choice }} - {{ review.student_choice_text }}
+                                            {% if review.is_correct %}
+                                                <span class="text-success">✓ Correct</span>
+                                            {% else %}
+                                                <span class="text-danger">✗ Incorrect</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-warning">Not answered</span>
+                                        {% endif %}
+                                    </small><br>
+                                    <small class="text-muted">
+                                        <strong>Correct Answer:</strong> {{ review.correct_choice.label }} - {{ review.correct_choice_text }}
+                                    </small>
+                                    {% if review.time_spent > 0 %}
+                                    <br><small class="text-muted">
+                                        <strong>Time Spent:</strong> {{ review.time_spent }} seconds
+                                    </small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <div class="p-3">
+                                    {% if review.is_correct %}
+                                        <i class="fas fa-check-circle fa-3x text-success"></i>
+                                        <h6 class="text-success mt-2">Excellent!</h6>
+                                        <small class="text-muted">You got this right</small>
+                                    {% elif review.is_answered %}
+                                        <i class="fas fa-times-circle fa-3x text-danger"></i>
+                                        <h6 class="text-danger mt-2">Review Needed</h6>
+                                        <small class="text-muted">Study this topic more</small>
+                                    {% else %}
+                                        <i class="fas fa-question-circle fa-3x text-warning"></i>
+                                        <h6 class="text-warning mt-2">Not Answered</h6>
+                                        <small class="text-muted">Make sure to answer all questions</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <!-- Fallback for any other visibility level -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Result Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Results Configuration</strong><br>
+                        The result display settings for this test are not configured. Please contact your teacher.
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             
             <!-- Actions -->
             <div class="text-center mt-4 mb-4">

@@ -16,17 +16,32 @@
                         
                         {% if action == 'Create' %}
                         <div class="mb-3">
+                            <label for="session_name" class="form-label">Session Name</label>
+                            <input type="text" class="form-control" id="session_name" name="session_name" 
+                                   maxlength="200" placeholder="e.g., Math Quiz - Class 10A, Science Test - Morning Batch">
+                            <div class="form-text">
+                                <i class="fas fa-info-circle"></i> 
+                                Give this session a custom name to distinguish it from other sessions of the same test.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="test" class="form-label">Select Test <span class="text-danger">*</span></label>
                             <select class="form-select" id="test" name="test" required>
                                 <option value="">-- Select a test --</option>
                                 {% for test in tests %}
                                 <option value="{{ test.id }}">
-                                    {{ test.title }} ({{ test.questions.count }} questions, {{ test.time_limit_minutes }} min)
+                                    {% if test.is_practice_test %}[PTC]{% else %}[TST]{% endif %} {{ test.title }} ({{ test.questions.count }} questions, {{ test.time_limit_minutes }} min)
                                 </option>
                                 {% endfor %}
                             </select>
+                            <div class="form-text">
+                                <strong>Test Type Prefixes:</strong> 
+                                <span class="badge bg-success me-1">[PTC]</span> Practice Test (auto-release results) |
+                                <span class="badge bg-warning me-1">[TST]</span> Assessment Test (manual review required)
+                            </div>
                             {% if not tests %}
-                            <div class="form-text text-warning">
+                            <div class="form-text text-warning mt-2">
                                 <i class="fas fa-exclamation-triangle"></i> 
                                 You need to create a test first before scheduling a session.
                                 <a href="{% url 'tests:test_create' %}" class="text-decoration-none">Create a test</a>
@@ -35,9 +50,25 @@
                         </div>
                         {% else %}
                         <div class="mb-3">
+                            <label for="session_name" class="form-label">Session Name</label>
+                            <input type="text" class="form-control" id="session_name" name="session_name" 
+                                   value="{{ session.session_name }}" maxlength="200" 
+                                   placeholder="e.g., Math Quiz - Class 10A, Science Test - Morning Batch">
+                            <div class="form-text">
+                                <i class="fas fa-info-circle"></i> 
+                                Custom name to distinguish this session from other sessions of the same test.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label">Test</label>
                             <div class="form-control-plaintext">
-                                <strong>{{ session.test.title }}</strong>
+                                <strong>
+                                    <span class="badge {% if session.test.is_practice_test %}bg-success{% else %}bg-warning{% endif %} me-2">
+                                        {% if session.test.is_practice_test %}[PTC]{% else %}[TST]{% endif %}
+                                    </span>
+                                    {{ session.test.title }}
+                                </strong>
                                 <small class="text-muted d-block">{{ session.test.questions.count }} questions, {{ session.test.time_limit_minutes }} minutes</small>
                             </div>
                         </div>

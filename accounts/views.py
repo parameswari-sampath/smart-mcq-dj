@@ -118,16 +118,19 @@ def dashboard_view(request):
             context['teacher_sessions'] = teacher_sessions
             return render(request, 'accounts/teacher_dashboard.html', context)
         else:
-            # For students, get test sessions for dashboard
-            # Note: In MVP, students see all sessions since there's no enrollment system yet
+            # For students, get ONLY test sessions they have joined via access code
+            # SECURITY: Students should never see all sessions - only joined ones
             current_time = timezone.now()
             
-            # Get all active test sessions
-            all_sessions = TestSession.objects.filter(is_active=True).select_related('test', 'created_by')
-            
-            # Get student's test attempts
+            # Get student's test attempts (only sessions they've joined)
             student_attempts = StudentTestAttempt.objects.filter(student=request.user).select_related('test_session')
             joined_session_ids = set(attempt.test_session.id for attempt in student_attempts)
+            
+            # Get only the sessions the student has joined
+            all_sessions = TestSession.objects.filter(
+                id__in=joined_session_ids,
+                is_active=True
+            ).select_related('test', 'created_by')
             
             # Get student's completed test attempts for result viewing (v1.3.1)
             completed_attempts = TestAttempt.objects.filter(
@@ -246,18 +249,24 @@ def join_test_session(request):
 
 @login_required
 def view_test_details(request, session_id):
-    """Display test session details for students"""
+    """Display test session details for students - ONLY if they have joined via access code"""
     try:
+        # SECURITY: Students can only view details of sessions they have joined
         session = TestSession.objects.select_related('test', 'created_by').get(
             id=session_id, 
             is_active=True
         )
         
-        # Check if student has already joined this test
+        # Check if student has joined this test (REQUIRED for access)
         has_joined = StudentTestAttempt.objects.filter(
             student=request.user,
             test_session=session
         ).exists()
+        
+        # SECURITY CHECK: Deny access if student hasn't joined via access code
+        if not has_joined:
+            messages.error(request, 'Access denied. You must join this test using an access code first.')
+            return redirect('dashboard')
         
         context = {
             'session': session,
@@ -534,7 +543,7 @@ def submit_test(request, attempt_id):
 
 @login_required  
 def test_results(request):
-    """Display test results after submission"""
+    """Display test results after submission (v1.3 + v1.4.1 result release control)"""
     results = request.session.get('test_results')
     if not results:
         messages.error(request, 'No test results found.')
@@ -547,6 +556,24 @@ def test_results(request):
         ).prefetch_related(
             'answers__question__choices'
         ).get(id=results['attempt_id'])
+        
+        # v1.4.1: Check if student can view results based on release settings and timer
+        if not test_attempt.can_view_results:
+            test_session = test_attempt.test_session
+            test = test_attempt.test
+            
+            # Check if it's due to timer not expired
+            if test_session.start_time:
+                test_end_time = test_session.start_time + timezone.timedelta(minutes=test.time_limit_minutes)
+                if timezone.now() < test_end_time:
+                    time_remaining = test_end_time - timezone.now()
+                    minutes_remaining = int(time_remaining.total_seconds() / 60)
+                    messages.info(request, f'Test results will be available after the exam time expires (in {minutes_remaining} minutes).')
+                    return redirect('dashboard')
+            
+            # Otherwise it's due to release settings
+            messages.info(request, 'Your test results are not yet available. Your teacher will release them when ready.')
+            return redirect('dashboard')
         
         # Build detailed question review data
         question_reviews = []
@@ -585,7 +612,7 @@ def test_results(request):
 
 @login_required
 def result_detail(request, attempt_id):
-    """Display persistent test results for a specific attempt (v1.3.1)"""
+    """Display persistent test results for a specific attempt (v1.3.1 + v1.4.1 result release control)"""
     try:
         test_attempt = TestAttempt.objects.select_related(
             'student_test_attempt__test_session__test',
@@ -602,6 +629,24 @@ def result_detail(request, attempt_id):
         # Check if test is submitted
         if not test_attempt.is_submitted:
             messages.error(request, 'This test has not been submitted yet.')
+            return redirect('dashboard')
+        
+        # v1.4.1: Check if student can view results based on release settings and timer
+        if not test_attempt.can_view_results:
+            test_session = test_attempt.test_session
+            test = test_attempt.test
+            
+            # Check if it's due to timer not expired
+            if test_session.start_time:
+                test_end_time = test_session.start_time + timezone.timedelta(minutes=test.time_limit_minutes)
+                if timezone.now() < test_end_time:
+                    time_remaining = test_end_time - timezone.now()
+                    minutes_remaining = int(time_remaining.total_seconds() / 60)
+                    messages.info(request, f'Test results will be available after the exam time expires (in {minutes_remaining} minutes).')
+                    return redirect('dashboard')
+            
+            # Otherwise it's due to release settings
+            messages.info(request, 'Your test results are not yet available. Your teacher will release them when ready.')
             return redirect('dashboard')
         
         # Build detailed question review data (same as v1.3)
@@ -859,3 +904,146 @@ def format_time(seconds):
         hours = seconds // 3600
         remaining_minutes = (seconds % 3600) // 60
         return f"{hours}h {remaining_minutes}m"
+
+
+# ============================================================================
+# v1.4.1: Result Release Control Views
+# ============================================================================
+
+@login_required
+def teacher_result_release_management(request, session_id):
+    """Teacher interface for managing result releases for a test session (v1.4.1)"""
+    try:
+        # Get the test session
+        test_session = TestSession.objects.select_related('test', 'created_by').get(id=session_id)
+        
+        # Security check - only session creator can manage releases
+        if test_session.created_by != request.user:
+            messages.error(request, 'Access denied. You can only manage releases for tests you created.')
+            return redirect('dashboard')
+        
+        # Get all test attempts for this session (both submitted and pending)
+        all_attempts = TestAttempt.objects.filter(
+            student_test_attempt__test_session=test_session
+        ).select_related(
+            'student_test_attempt__student',
+            'released_by'
+        ).order_by('student_test_attempt__student__username')
+        
+        # Prepare release data
+        release_data = []
+        for attempt in all_attempts:
+            student = attempt.student_test_attempt.student
+            student_name = f"{student.first_name} {student.last_name}" if student.first_name and student.last_name else student.username
+            
+            # Calculate scores if submitted
+            if attempt.is_submitted:
+                total_questions = attempt.total_questions
+                correct_answers = attempt.answers.filter(is_correct=True).count()
+                score_percentage = round((correct_answers / total_questions) * 100) if total_questions > 0 else 0
+            else:
+                total_questions = 0
+                correct_answers = 0
+                score_percentage = 0
+            
+            release_info = {
+                'attempt_id': attempt.id,
+                'student_name': student_name,
+                'student_username': student.username,
+                'is_submitted': attempt.is_submitted,
+                'score': correct_answers,
+                'total_questions': total_questions,
+                'score_percentage': score_percentage,
+                'can_view_results': attempt.can_view_results,
+                'is_result_released': attempt.is_result_released,
+                'result_released_at': attempt.result_released_at,
+                'released_by': attempt.released_by,
+                'submitted_at': attempt.submitted_at,
+            }
+            
+            release_data.append(release_info)
+        
+        # Handle bulk release action
+        if request.method == 'POST':
+            action = request.POST.get('action')
+            
+            if action == 'bulk_release':
+                selected_attempts = request.POST.getlist('selected_attempts')
+                released_count = 0
+                
+                for attempt_id in selected_attempts:
+                    try:
+                        attempt = TestAttempt.objects.get(
+                            id=attempt_id,
+                            student_test_attempt__test_session=test_session,
+                            is_submitted=True
+                        )
+                        if not attempt.is_result_released:
+                            attempt.release_result(request.user)
+                            released_count += 1
+                    except TestAttempt.DoesNotExist:
+                        continue
+                
+                if released_count > 0:
+                    messages.success(request, f'Successfully released results for {released_count} student(s).')
+                else:
+                    messages.warning(request, 'No results were released. Results may already be released or students have not submitted.')
+                
+                return redirect('teacher_result_release_management', session_id=session_id)
+        
+        context = {
+            'test_session': test_session,
+            'release_data': release_data,
+            'total_students': len(release_data),
+            'submitted_count': len([r for r in release_data if r['is_submitted']]),
+            'released_count': len([r for r in release_data if r['is_result_released']]),
+            'pending_release_count': len([r for r in release_data if r['is_submitted'] and not r['is_result_released']]),
+        }
+        
+        return render(request, 'accounts/teacher_result_release_management.html', context)
+        
+    except TestSession.DoesNotExist:
+        messages.error(request, 'Test session not found.')
+        return redirect('dashboard')
+
+
+@login_required
+@csrf_exempt
+def individual_result_release(request, session_id, attempt_id):
+    """AJAX endpoint for individual result release (v1.4.1)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'})
+    
+    try:
+        # Get the test session and attempt
+        test_session = TestSession.objects.select_related('created_by').get(id=session_id)
+        test_attempt = TestAttempt.objects.get(
+            id=attempt_id,
+            student_test_attempt__test_session=test_session
+        )
+        
+        # Security check
+        if test_session.created_by != request.user:
+            return JsonResponse({'success': False, 'error': 'Access denied'})
+        
+        # Check if attempt is submitted
+        if not test_attempt.is_submitted:
+            return JsonResponse({'success': False, 'error': 'Student has not submitted the test yet'})
+        
+        # Check if already released
+        if test_attempt.is_result_released:
+            return JsonResponse({'success': False, 'error': 'Results already released'})
+        
+        # Release the result
+        test_attempt.release_result(request.user)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Result released successfully',
+            'released_at': test_attempt.result_released_at.strftime('%B %d, %Y at %I:%M %p')
+        })
+        
+    except (TestSession.DoesNotExist, TestAttempt.DoesNotExist):
+        return JsonResponse({'success': False, 'error': 'Test session or attempt not found'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

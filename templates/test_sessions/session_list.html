@@ -35,8 +35,16 @@
                                     {% for session in sessions %}
                                     <tr>
                                         <td>
-                                            <strong>{{ session.test.title }}</strong><br>
-                                            <small class="text-muted">{{ session.test.questions.count }} questions</small>
+                                            <span class="badge {% if session.test.is_practice_test %}bg-success{% else %}bg-warning{% endif %} me-2">
+                                                {% if session.test.is_practice_test %}[PTC]{% else %}[TST]{% endif %}
+                                            </span>
+                                            {% if session.session_name %}
+                                                <strong>{{ session.session_name }}</strong><br>
+                                                <small class="text-muted">{{ session.test.title }} | {{ session.test.questions.count }} questions</small>
+                                            {% else %}
+                                                <strong>{{ session.test.title }}</strong><br>
+                                                <small class="text-muted">{{ session.test.questions.count }} questions</small>
+                                            {% endif %}
                                         </td>
                                         <td>
                                             <code class="bg-light px-2 py-1 rounded">{{ session.access_code }}</code>

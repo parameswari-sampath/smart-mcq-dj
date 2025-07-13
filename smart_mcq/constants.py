@@ -312,6 +312,67 @@ class ErrorMessages:
 
 
 # ============================================================================
+# RESULT RELEASE CONTROL CONSTANTS
+# ============================================================================
+
+class ResultReleaseModes:
+    """Constants for result release control modes"""
+    
+    # Release Modes
+    IMMEDIATE = 'immediate'
+    MANUAL = 'manual'
+    SCHEDULED = 'scheduled'
+    AFTER_ALL_COMPLETE = 'after_all_complete'
+    
+    # Release Mode Choices for Django fields
+    RELEASE_MODE_CHOICES = [
+        (IMMEDIATE, _('Immediate (auto-release on completion)')),
+        (MANUAL, _('Manual (teacher controls release)')),
+        (SCHEDULED, _('Scheduled (release at specific time)')),
+        (AFTER_ALL_COMPLETE, _('After All Complete (wait for all students)')),
+    ]
+    
+    # Default Mode
+    DEFAULT_MODE = IMMEDIATE
+
+
+class AnswerVisibilityLevels:
+    """Constants for answer visibility levels"""
+    
+    # Visibility Levels
+    SCORE_ONLY = 'score_only'
+    WITH_ANSWERS = 'with_answers'
+    ENHANCED_REVIEW = 'enhanced_review'
+    
+    # Visibility Level Choices for Django fields
+    VISIBILITY_CHOICES = [
+        (SCORE_ONLY, _('Score Only (basic score and percentage)')),
+        (WITH_ANSWERS, _('Results with Answers (show correct vs student answers)')),
+        (ENHANCED_REVIEW, _('Enhanced Review (full detailed breakdown)')),
+    ]
+    
+    # Default Level
+    DEFAULT_LEVEL = WITH_ANSWERS
+
+
+class TestTypes:
+    """Constants for test types affecting result release behavior"""
+    
+    # Test Types
+    PRACTICE = 'practice'
+    ASSESSMENT = 'assessment'
+    
+    # Test Type Choices
+    TEST_TYPE_CHOICES = [
+        (PRACTICE, _('Practice (auto-release, formative)')),
+        (ASSESSMENT, _('Assessment (manual review, summative)')),
+    ]
+    
+    # Default Type
+    DEFAULT_TYPE = PRACTICE
+
+
+# ============================================================================
 # SUCCESS MESSAGES
 # ============================================================================
 
@@ -332,3 +393,8 @@ class SuccessMessages:
     TEST_JOINED = _('Successfully joined the test session.')
     ANSWER_SAVED = _('Answer saved successfully.')
     TEST_SUBMITTED = _('Test submitted successfully.')
+    
+    # Result Release
+    RESULTS_RELEASED = _('Results released successfully.')
+    BULK_RESULTS_RELEASED = _('Bulk results released successfully.')
+    RESULT_RELEASE_SCHEDULED = _('Result release scheduled successfully.')
