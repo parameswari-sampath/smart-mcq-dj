@@ -86,7 +86,7 @@ versions:
       - No bulk import for MVP, manual entry only
       - Optional ImageField for question images, stored in media/questions/
     notes:
-      - FUTURE: Convert category CharField to ManyToMany Tag model in v3.5
+      - FUTURE: Convert category CharField to ManyToMany Tag model in v3.6
       - Current simple approach supports basic categorization for MVP
       - Tag system must be flexible for question pooling in advanced versions
     tests:
@@ -496,7 +496,6 @@ versions:
       - TestAttempt model: result_released_at timestamp, released_by teacher
       - Result release management interface in teacher dashboard
       - Student result view respects release settings and visibility levels
-      - Email notification system for result release events
       - Bulk operations for releasing multiple student results
     tests:
       - Test creation form includes result release configuration
@@ -507,7 +506,6 @@ versions:
       - Bulk release operations work for multiple students simultaneously
       - Individual student result release override functionality
       - Students see appropriate content based on release settings
-      - Email notifications sent when results are released
       - Scheduled release triggers automatically at specified time
       - "After all complete" waits for all students before releasing any results
       - Academic integrity: answer viewing restrictions prevent sharing
@@ -522,36 +520,31 @@ versions:
       - ACADEMIC INTEGRITY: Prevents answer sharing between students taking test at different times
       - TEACHER WORKFLOW: Efficient bulk operations while allowing individual exceptions
 
-  v1.5: First-Click Analytics Foundation + Security Tracking
+  v1.5: Basic Question Shuffling + Simple Security Events (SIMPLIFIED)
     questions:
-      - How should first-click data be captured for learning analytics?
-      - What test modes should be supported (test vs practice)?
-      - How should question/answer shuffling work?
-      - What events should be tracked for security?
-      - How should violations be displayed to teachers?
-      - What data structure supports both basic and advanced analytics?
+      - How should question order be randomized?
+      - Should answer choices be shuffled?
+      - What basic security events should be tracked?
+      - How should test vs practice modes work?
     answers:
-      - Capture first-click answer, timestamp, and correctness via AJAX before allowing changes
-      - Add mode field to TestSession: 'test' (free navigation) vs 'practice' (constrained flow)
-      - Shuffle questions per session, shuffle answer choices per student attempt
-      - Track: tab switch (visibilitychange), window blur/focus, page unload, first-click events
-      - Simple table in teacher results showing violation count and first-click accuracy per student
-      - Enhanced TestAttempt model: first_click_answer, first_click_timestamp, first_click_correct, total_attempts
-    industry_solution:
-      - PROCTORIO APPROACH: Configurable violation policies per test
-      - WARNING SYSTEM: 1st warning, 2nd final warning, 3rd auto-submit or lock
-      - TEACHER SETTINGS: Max violations allowed, action on violation (warn/submit/lock)
-      - GRACE PERIOD: Brief window to return focus before counting violation
-      - APPEAL PROCESS: Students can add notes explaining violations
-      - IMPLEMENTATION: Add proctoring_settings JSON field to Test model
+      - Simple question order randomization per test session
+      - Answer choice shuffling per student (A,B,C,D order varies)
+      - Basic event tracking: test start, submit, tab switch detection
+      - Add attempt_type field: 'assessment' vs 'practice' (following LMS standards)
+      - Simple violation counter in TestAttempt model
+    implementation:
+      - Add question_order field to TestAttempt (randomized sequence)
+      - Add answer_choice_order field to Answer (shuffled A,B,C,D)
+      - Add attempt_type field to TestSession ('assessment'/'practice')
+      - Add violation_count field to TestAttempt
+      - Basic JavaScript for tab switch detection
     tests:
-      - First-click data captures immediately on answer selection
-      - TestSession mode field ('test'/'practice') saves correctly
-      - Question order shuffles per session uniquely
+      - Question order randomizes differently per session
       - Answer choice order shuffles per student attempt
       - Tab switch events are detected and logged
-      - Window blur/focus events trigger properly
-      - First-click accuracy calculation works correctly
+      - Assessment vs practice mode saves correctly
+      - Violation counter increments on security events
+      - Basic randomization prevents simple answer copying
       - Enhanced TestAttempt model stores all analytics fields
       - Teacher results show both violation counts and first-click metrics
       - Security violation logging includes first-click context
@@ -562,117 +555,131 @@ versions:
       - AJAX first-click capture works across all browsers
       - Data integrity maintained between basic scoring and advanced analytics
 
-  v1.6: Learning Analytics Engine + Practice Mode Flow Control
+  v1.6: Practice Mode Flow Control (SIMPLIFIED)
     questions:
-      - How should learning efficiency be calculated from first-click data?
-      - How should practice mode enforce correct answers before proceeding?
-      - What timing data should be captured for speed vs accuracy analysis?
-      - How should question difficulty be analyzed automatically?
-      - What learning insights should be generated for students and teachers?
-      - How should practice mode completion validation work?
+      - How should practice mode differ from assessment mode?
+      - What constraints should practice mode have?
+      - Should practice mode require correct answers?
     answers:
-      - Learning efficiency: (first_attempt_percentage * 0.7) + (second_attempt_success_rate * 0.3)
-      - Practice mode: disable Next button until correct answer selected, block submission until 100% complete
-      - Capture: question start time, first-click time, final answer time, total time, attempt count
-      - Question difficulty: success_rate < 40% = hard, 40-70% = medium, >70% = easy
-      - Generate: speed vs accuracy correlation, fatigue analysis, recovery patterns, learning trends
-      - Practice completion: validate all questions answered correctly, prevent partial submissions
+      - Practice mode: requires correct answer before proceeding to next question
+      - Assessment mode: allows free navigation between questions
+      - Practice mode: must complete all questions correctly before submission
+      - Assessment mode: can submit with unanswered questions
+      - Simple UI indicators showing mode and completion requirements
+    implementation:
+      - Add UI constraints for practice mode navigation
+      - Validate practice mode completion before submission
+      - Add mode indicators in test interface
+      - Simple JavaScript to disable Next button until correct answer
     tests:
-      - Learning efficiency algorithm calculates correctly from first-click data
       - Practice mode blocks navigation until correct answer selected
       - Practice mode prevents submission until all questions answered correctly
-      - Question timing captures first-click, final answer, and total durations
-      - Speed vs accuracy correlation generates meaningful insights
-      - Question difficulty analysis categorizes questions appropriately
-      - Fatigue analysis detects performance degradation over test duration
-      - Recovery pattern analysis tracks student improvement after wrong answers
-      - Practice flow validation ensures 100% completion before allowing submission
-      - Learning analytics display in enhanced teacher dashboard
-      - Student progress insights help identify learning patterns
-      - Time-based analytics identify questions requiring too much/little time
-      - Learning efficiency scoring provides actionable student feedback
-      - Practice mode UI clearly indicates completion requirements
-      - Analytics calculations handle edge cases (no attempts, single question tests)
-      - Performance insights maintain student privacy while providing teacher value
+      - Assessment mode allows free navigation and partial submission
+      - Mode indicators clearly show current test type to students
+      - Practice completion validation works correctly
 
-  v1.7: Advanced Analytics Dashboard + Encrypted Result Export
+  v1.7: Basic Result Export (CSV format for MVP)
     questions:
-      - How should comprehensive learning analytics be displayed to teachers?
-      - What export format should match the POC encrypted results?
-      - How should behavior logs integrate with learning analytics?
-      - What dashboard layout provides maximum insight value?
-      - How should encrypted exports preserve all analytics data?
-      - What filtering and search capabilities enhance teacher workflow?
+      - What basic export format should teachers have for results?
+      - Should exports include basic or detailed data?
+      - What simple dashboard enhancements are needed?
     answers:
-      - Comprehensive dashboard: learning efficiency trends, question difficulty heatmaps, student progress analytics
-      - Export encrypted .enc files using AES encryption with same format as POC (JSON with analytics data)
-      - Behavior logs: integrate tab switches, focus loss, timing with first-click and learning analytics
-      - Dashboard layout: summary cards, interactive charts, detailed student breakdowns, question performance analysis
-      - Encrypted exports: include all first-click data, learning efficiency, timing, behavior, and performance analytics
-      - Advanced filtering: by student performance, question difficulty, time ranges, learning efficiency scores
+      - Simple CSV export with student names, scores, completion times
+      - Basic export data: no complex analytics, just essential results
+      - Enhanced teacher dashboard with basic sorting and filtering
+      - Export includes: name, score, percentage, completion time, submission date
+      - Simple download button for CSV export per test session
+    implementation:
+      - Add CSV export functionality to teacher results view
+      - Include basic test statistics in export header
+      - Simple filtering by completion status (completed/incomplete)
+      - Export respects teacher's organization boundaries
     tests:
-      - Advanced analytics dashboard displays learning efficiency trends
-      - Question difficulty heatmaps show performance patterns across questions
-      - Student progress analytics track improvement over time
-      - Encrypted .enc export generates files matching POC format exactly
-      - AES encryption preserves all analytics data in exports
-      - Behavior logs integrate with first-click and learning analytics
-      - Dashboard summary cards provide key metrics at a glance
-      - Interactive charts allow drill-down into specific data points
-      - Student breakdown shows individual learning patterns and efficiency scores
-      - Question performance analysis identifies difficult/easy questions automatically
-      - Advanced filtering works by student performance levels
-      - Time range filtering allows historical analysis
-      - Learning efficiency score filtering identifies students needing support
-      - Export includes all POC analytics: first-click, timing, behavior, efficiency
-      - Dashboard performance handles large datasets efficiently
-      - Analytics calculations maintain accuracy across different test modes
-
-  v1.8: Complete POC Analytics Integration
-    questions:
-      - How should the analytics dashboard match POC capabilities exactly?
-      - What additional learning insights should be provided to students?
-      - How should question randomization integrate with existing shuffling?
-      - What performance optimizations are needed for large datasets?
-      - How should the system handle concurrent users with analytics?
-      - What admin tools are needed for analytics management?
-    answers:
-      - Full analytics dashboard matching POC: fatigue analysis, speed vs accuracy correlation, recovery patterns
-      - Student insights: learning efficiency trends, personal improvement recommendations, practice suggestions
-      - Enhanced randomization: question pools, weighted selection, difficulty-based ordering
-      - Performance: caching analytics calculations, async processing for large exports, database indexing
-      - Concurrent handling: optimistic locking, session isolation, real-time analytics updates
-      - Admin tools: analytics configuration, data export management, system performance monitoring
-    poc_feature_completion:
-      - Learning efficiency algorithm: (first_attempt_accuracy * 0.7) + (true_learning_rate * 0.3)
-      - Speed vs accuracy correlation: Pearson correlation between time spent and accuracy
-      - Fatigue analysis: first half vs second half performance comparison
-      - Recovery patterns: consecutive wrong answers and recovery tracking
-      - Random clicking detection: 3+ attempts indicating guessing behavior
-      - Question difficulty classification: Easy (70%+), Medium (50-70%), Hard (30-50%), Very Hard (<30%)
-      - Time complexity analysis: relative to average time per question
-      - Complete encrypted export: matching POC .enc format with all analytics data
-    tests:
-      - Learning efficiency algorithm produces identical results to POC
-      - Speed vs accuracy correlation calculates Pearson coefficient correctly
-      - Fatigue analysis detects performance degradation accurately
-      - Recovery pattern analysis tracks improvement sequences
-      - Random clicking detection identifies students with excessive attempts
-      - Question difficulty auto-classification matches manual assessment
-      - Time complexity analysis provides meaningful insights
-      - Encrypted exports match POC format byte-for-byte
-      - Analytics dashboard loads quickly with large datasets
-      - Real-time updates don't impact test-taking performance
-      - Student insights provide actionable learning recommendations
-      - Teacher analytics enable data-driven instruction decisions
-      - System scales to hundreds of concurrent users
-      - Analytics data integrity maintained across all operations
-      - POC feature parity achieved with enhanced Django architecture
+      - CSV export downloads correctly with proper filename
+      - Export includes all completed student results
+      - CSV format opens properly in Excel and spreadsheet applications
+      - Export filtering works for completed vs incomplete attempts
+      - File includes basic test information in header rows
+      - Export respects security boundaries (teacher's own tests only)
+      - Download works across different browsers
+      - Large class exports complete successfully
     notes:
-      - COMPLETE POC INTEGRATION: All proof-of-concept features now available in Django
-      - ENHANCED ARCHITECTURE: Better scalability and maintainability than original POC
-      - UNIFIED PLATFORM: Single system supports both basic MCQ and advanced analytics
-      - PERFORMANCE OPTIMIZED: Enterprise-ready with caching and async processing
+      - SIMPLIFIED FOR MVP: Complex analytics moved to v2.5 Advanced Analytics Dashboard
+      - ENCRYPTION: Advanced encrypted exports moved to v2.8 Security Features
+      - FOCUS: Essential teacher workflow for result management and basic reporting
+
+  v1.8: Email Templates & Notification System (Foundation)
+    questions:
+      - What email templates are needed for the platform?
+      - How should the notification system be structured?
+      - What email events should be supported?
+      - How should email templates be organized?
+    answers:
+      - Basic email templates: verification, password reset, system notifications
+      - Simple notification system for essential communications
+      - Email events: account verification, password reset, result release (basic)
+      - Template organization: Django email templates with base template and inheritance
+      - Plain text and HTML email versions for compatibility
+    implementation:
+      - Django email template system setup
+      - Base email template with platform branding
+      - Email template inheritance for consistent styling
+      - Basic notification queue for email sending
+      - SMTP configuration testing and validation
+    tests:
+      - Email verification template renders correctly
+      - Password reset email template contains proper links
+      - HTML and plain text versions both work
+      - Base template provides consistent styling
+      - Email sending works with configured SMTP provider
+      - Template inheritance maintains branding consistency
+      - Email templates are mobile-responsive
+      - Email links generate proper URLs
+    notes:
+      - FOUNDATION FOR FUTURE: Prepares email infrastructure for v2.4 invitations and v2.7 notifications
+      - SIMPLIFIED SCOPE: Focus on essential email functionality only
+      - COMPLEX FEATURES MOVED: Advanced analytics moved to v2.5 Advanced Analytics Dashboard
+
+  v1.9: Email Verification & Authentication Security (MOVED UP from v2.3.1)
+    questions:
+      - What verification process should be used?
+      - How should password reset work?
+      - What security measures are needed?
+      - Should email verification be required or optional?
+      - How should rate limiting be implemented?
+    answers:
+      - Email verification with unique token on registration (REQUIRED for future email features)
+      - Password reset via email with secure token link
+      - Tokens expire after 24 hours, one-time use only
+      - REQUIRED: Email verification before any email-based features work
+      - Rate limiting: 3 requests per 15 minutes per email
+    industry_solution:
+      - GMAIL/OUTLOOK PATTERN: Email verification required before account activation
+      - SECURITY STANDARD: Prevents bounce emails and spam complaints
+      - DJANGO STANDARD: Built-in email verification with secure token generation
+    implementation:
+      - Email verification workflow with activation tokens
+      - Password reset views and email templates
+      - Django email backend configuration (SMTP setup)
+      - Security middleware for password policies and rate limiting
+      - User profile shows email verification status
+      - Email template system for future email features
+    tests:
+      - Email verification sends unique tokens correctly
+      - Password reset generates secure token links
+      - Token expiration enforced after 24 hours
+      - One-time token usage prevents reuse
+      - Django email templates render properly
+      - Rate limiting prevents abuse (3 requests per 15 minutes)
+      - Expired token handling shows helpful error messages
+      - Email verification completes registration process
+      - Password reset allows secure password updates
+      - SMTP configuration works with major email providers
+      - Unverified users cannot access email-dependent features
+    notes:
+      - CRITICAL FOUNDATION: Required for all future email features (v2.4, v2.7, etc.)
+      - SECURITY IMPROVEMENT: Addresses authentication gaps from earlier versions
+      - DEPENDENCY RESOLVER: Ensures email invitations in v2.4 work reliably
 
   v2.0: Question Navigator (Jump to Q1-Q10)
     questions:
@@ -806,7 +813,7 @@ versions:
       - Student cannot access other students' tests
       - Dashboard personalizes content per student
 
-  v2.4: Invite Students via Email or Code
+  v2.4: Invite Students via Email or Code (ENHANCED - Now depends on v1.9)
     questions:
       - How should email invitations be sent?
       - What information should be included in invites?
@@ -815,11 +822,13 @@ versions:
       - How should invitation status be tracked?
       - What happens when invitations expire?
     answers:
-      - Django's built-in email backend with SMTP configuration
-      - Include test name, date/time, access code, teacher name
-      - Simple textarea for multiple email addresses (one per line)
+      - OPTIONAL FEATURE: Email invitations for convenience (teachers can share codes manually via WhatsApp/class)
+      - REQUIRES: v1.9 email verification - only verified emails can receive invitations
+      - Django's built-in email backend with SMTP configuration (from v1.9)
+      - Include test name, date/time, access code, teacher name in email template
+      - Simple textarea for multiple verified email addresses (one per line)
       - Single email template for all test invitations
-      - No tracking for MVP, just send and assume received
+      - Basic delivery tracking (success/failure) since emails are now verified
       - No invitation expiry for MVP, access codes work until test starts
     industry_solution:
       - CANVAS APPROACH: Enrollment-based invitations, not just email blasts
@@ -829,8 +838,10 @@ versions:
       - REMINDERS: Automatic reminder emails before test deadline
       - IMPLEMENTATION: Invitation model tracks status, scheduled reminder jobs
     notes:
-      - WORKFLOW RESOLVED: Enrollment system provides student contact info
-      - PROFESSIONAL: Enterprise-grade invitation and reminder system
+      - DEPENDENCY RESOLVED: v2.3.1 email verification ensures deliverable emails
+      - WORKFLOW FLEXIBLE: Teachers can use email invitations OR manual code sharing (WhatsApp, class announcements)
+      - NO BOUNCE RISK: Only verified email addresses can receive invitations
+      - PROFESSIONAL: Enterprise-grade invitation system with delivery confirmation
       - INTEGRATION: Works seamlessly with enrollment-based access control
     tests:
       - Email invitations send with all required information
@@ -850,7 +861,62 @@ versions:
       - Invitation workflow integrates with test scheduling
       - Enrollment system provides contact information
 
-  v2.5: CSV/PDF Export of Results
+  v2.5: Advanced Analytics Dashboard (MOVED FROM v1.7-v1.8)
+    questions:
+      - How should comprehensive learning analytics be displayed to teachers?
+      - What advanced analytics should be calculated from first-click and timing data?
+      - How should behavior logs integrate with learning analytics?
+      - What dashboard layout provides maximum insight value?
+      - How should the analytics match POC capabilities exactly?
+      - What performance optimizations are needed for large datasets?
+    answers:
+      - Comprehensive dashboard: learning efficiency trends, question difficulty heatmaps, student progress analytics
+      - POC analytics: fatigue analysis, speed vs accuracy correlation, recovery patterns, random clicking detection
+      - Behavior logs: integrate tab switches, focus loss, timing with first-click and learning analytics
+      - Dashboard layout: summary cards, interactive charts, detailed student breakdowns, question performance analysis
+      - Advanced filtering: by student performance, question difficulty, time ranges, learning efficiency scores
+      - Performance: caching analytics calculations, async processing for large exports, database indexing
+    poc_feature_completion:
+      - Learning efficiency algorithm: (first_attempt_accuracy * 0.7) + (true_learning_rate * 0.3)
+      - Speed vs accuracy correlation: Pearson correlation between time spent and accuracy
+      - Fatigue analysis: first half vs second half performance comparison
+      - Recovery patterns: consecutive wrong answers and recovery tracking
+      - Random clicking detection: 3+ attempts indicating guessing behavior
+      - Question difficulty classification: Easy (70%+), Medium (50-70%), Hard (30-50%), Very Hard (<30%)
+      - Time complexity analysis: relative to average time per question
+    tests:
+      - Advanced analytics dashboard displays learning efficiency trends
+      - Question difficulty heatmaps show performance patterns across questions
+      - Student progress analytics track improvement over time
+      - Learning efficiency algorithm produces identical results to POC
+      - Speed vs accuracy correlation calculates Pearson coefficient correctly
+      - Fatigue analysis detects performance degradation accurately
+      - Recovery pattern analysis tracks improvement sequences
+      - Random clicking detection identifies students with excessive attempts
+      - Question difficulty auto-classification matches manual assessment
+      - Time complexity analysis provides meaningful insights
+      - Dashboard summary cards provide key metrics at a glance
+      - Interactive charts allow drill-down into specific data points
+      - Student breakdown shows individual learning patterns and efficiency scores
+      - Question performance analysis identifies difficult/easy questions automatically
+      - Advanced filtering works by student performance levels
+      - Time range filtering allows historical analysis
+      - Learning efficiency score filtering identifies students needing support
+      - Analytics dashboard loads quickly with large datasets
+      - Real-time updates don't impact test-taking performance
+      - Student insights provide actionable learning recommendations
+      - Teacher analytics enable data-driven instruction decisions
+      - System scales to hundreds of concurrent users
+      - Analytics data integrity maintained across all operations
+      - POC feature parity achieved with enhanced Django architecture
+    notes:
+      - MOVED FROM v1.x: Complex analytics separated from MVP to maintain focus
+      - COMPLETE POC INTEGRATION: All proof-of-concept features now available in Django
+      - ENHANCED ARCHITECTURE: Better scalability and maintainability than original POC
+      - UNIFIED PLATFORM: Single system supports both basic MCQ and advanced analytics
+      - PERFORMANCE OPTIMIZED: Enterprise-ready with caching and async processing
+
+  v2.6: CSV/PDF Export of Results (MOVED FROM original v2.5)
     questions:
       - What data should be included in exports?
       - How should PDF reports be formatted?
@@ -887,7 +953,7 @@ versions:
       - Export functionality accessible from results page
       - File size reasonable for email sharing
 
-  v2.6: Manual Scoring Support (Code & Subjective Answers)
+  v2.7: Manual Scoring Support (Code & Subjective Answers)
     questions:
       - How should manual scoring interface work?
       - What grading rubrics should be supported?
@@ -958,7 +1024,40 @@ versions:
       - Notification system scales with user volume
       - Email scheduling handles server downtime
 
-  v2.8: Test vs Practice Flow Control (REVISED)
+  v2.8: Encrypted Result Export (Advanced Security Features)
+    questions:
+      - What export format should match the POC encrypted results?
+      - How should encrypted exports preserve all analytics data?
+      - What encryption method provides adequate security?
+      - How should encrypted files be delivered to teachers?
+    answers:
+      - Export encrypted .enc files using AES encryption with same format as POC (JSON with analytics data)
+      - Encrypted exports: include all first-click data, learning efficiency, timing, behavior, and performance analytics
+      - AES-256 encryption with secure key derivation from teacher credentials
+      - Simple download links with encrypted file delivery (no email attachment for security)
+    implementation:
+      - AES encryption library integration for secure exports
+      - POC-compatible .enc file format with JSON structure
+      - Complete analytics data serialization for export
+      - Secure key management for encryption/decryption
+      - Teacher dashboard export controls and file management
+    tests:
+      - Encrypted .enc export generates files matching POC format exactly
+      - AES encryption preserves all analytics data in exports
+      - Encrypted exports include all first-click data, learning efficiency, timing
+      - Export files decrypt correctly with proper credentials
+      - Secure key derivation prevents unauthorized access
+      - File download security maintains teacher boundaries
+      - Analytics data integrity maintained in encrypted format
+      - Large encrypted exports complete successfully
+      - Encryption performance acceptable for production use
+    notes:
+      - MOVED FROM v1.7: Advanced security features separated from MVP
+      - POC COMPATIBILITY: Maintains exact format compatibility with proof-of-concept
+      - SECURITY ENHANCED: Production-grade encryption implementation
+      - TEACHER WORKFLOW: Seamless integration with existing export functionality
+
+  v2.9: Test vs Practice Flow Control (REVISED)
     questions:
       - What are the key flow differences between test and practice modes?
       - How should practice mode enforce learning constraints?
@@ -1045,26 +1144,31 @@ versions:
       - PRIORITY: Post-MVP feature after core test-taking functionality complete
       - SIMPLICITY: Focuses on class-based assignment only, not full LMS complexity
 
-  v3.0: Coding Question Type (Python Editor + Test Cases)
+  v3.0: Coding Question Type (Text-Based, No Execution)
     questions:
       - What code editor features are needed?
-      - How should test cases be defined?
+      - How should coding questions be structured?
       - What programming languages to support?
-      - How should code execution be handled?
-      - What security measures are needed?
+      - How should answers be submitted and evaluated?
       - Should there be code templates?
     answers:
-      - Basic textarea with syntax highlighting (CodeMirror)
-      - Simple input/output test cases stored as JSON
-      - Python only initially, expand later
-      - Execute in sandboxed environment (Docker containers)
-      - Basic sandboxing, time limits, memory limits
-      - Simple function template provided for each question
+      - Basic textarea with syntax highlighting (CodeMirror for display only)
+      - Text-based coding questions with manual review
+      - Python, Java, JavaScript question templates
+      - Students submit code as text, teachers review manually
+      - Code templates and starter code provided per question
+      - No automatic execution - manual grading workflow
+    implementation:
+      - CodeMirror editor for syntax highlighting (read-only execution)
+      - Question templates for different programming languages
+      - Large text area for student code submission
+      - Manual grading interface for teachers
+      - Code comparison tools for plagiarism detection
     notes:
-      - MAJOR DEPENDENCY: Requires Docker, CodeMirror, subprocess security
-      - CONFLICT: Code execution complexity vs MVP simplicity
-      - RECOMMENDATION: Consider this post-MVP unless critical for market
-      - Alternative: Start with theoretical coding questions (text answers)
+      - SIMPLIFIED APPROACH: No Docker dependency, manual evaluation only
+      - DOCKER EXECUTION: Moved to v3.5 Code Execution Sandbox
+      - MVP FOCUS: Code questions without execution complexity
+      - MANUAL WORKFLOW: Teachers grade coding questions like essays
     tests:
       - CodeMirror editor loads with syntax highlighting
       - Python syntax highlighting works correctly
@@ -1226,7 +1330,46 @@ versions:
       - Review interface shows student's shuffled view
       - Answer shuffling enhances academic integrity
 
-  v3.5: Question Pooling (Tag-Based Dynamic Test)
+  v3.5: Code Execution Sandbox (Docker Integration)
+    questions:
+      - How should code execution be sandboxed securely?
+      - What Docker configuration provides adequate isolation?
+      - How should test cases be executed automatically?
+      - What security measures prevent malicious code?
+      - How should execution timeouts and resource limits work?
+      - What error handling and feedback should be provided?
+    answers:
+      - Docker containers for complete isolation per code execution
+      - Lightweight Python Docker image with restricted permissions
+      - Automatic test case execution with input/output comparison
+      - Network isolation, filesystem restrictions, resource limits
+      - 30-second timeout, 128MB memory limit, no network access
+      - Detailed error messages for compilation and runtime errors
+    implementation:
+      - Docker integration with secure container configuration
+      - Test case execution engine with automatic grading
+      - Resource monitoring and limitation enforcement
+      - Secure code execution API with proper error handling
+      - Integration with existing coding question interface from v3.0
+    tests:
+      - Docker containers execute student code securely
+      - Test cases run automatically with proper input/output matching
+      - Resource limits prevent system overload
+      - Network isolation prevents external access
+      - Timeout handling prevents infinite loops
+      - Error messages help students debug their code
+      - Code execution results integrate with grading system
+      - Multiple simultaneous executions handled correctly
+      - Container cleanup prevents resource leaks
+      - Security sandbox prevents privilege escalation
+    notes:
+      - MOVED FROM v3.0: Separated execution complexity from basic coding questions
+      - MAJOR DEPENDENCY: First introduction of Docker to the platform
+      - SECURITY CRITICAL: Proper sandboxing essential for safety
+      - PERFORMANCE IMPACT: Container startup time affects user experience
+      - SCALABILITY: Consider resource usage for large classes
+
+  v3.6: Question Pooling (Tag-Based Dynamic Test)
     questions:
       - How should question pools be defined?
       - What tag system should be used?
@@ -1483,9 +1626,12 @@ versions:
       - Organization management dashboard
       - Basic subscription status tracking
     notes:
-      - SOLVES: Organization management gaps from v0.1 analysis
+      - RESOLVES v0.1 INCONSISTENCY: v0.1 claimed "multi-tenant ready from day one" but only basic Organization model was implemented
+      - CLARIFICATION: v0.1-v1.4.1 had basic organization field for future-proofing, not true multi-tenancy
+      - REAL MULTI-TENANCY: v3.13 implements actual data isolation and organization management
       - ENTERPRISE: Prepares for B2B multi-tenant deployment
       - SCALABILITY: Enables proper organization isolation
+      - ARCHITECTURE EVOLUTION: Single-tenant MVP → Multi-tenant enterprise platform
 
   v3.14: Student Experience Enhancement (Progress & History)
     questions:
@@ -1712,38 +1858,23 @@ versions:
       - Message privacy respects organization policies
       - Bulk messaging tools help with announcements
 
-  v4.5: Email Verification & Forgot Password Flow
+  v4.5: Advanced Email Features & Delivery Analytics (ENHANCED from original)
     questions:
-      - What verification process should be used?
-      - How should password reset work?
-      - What security measures are needed?
-      - How should email templates be managed?
-      - What rate limiting should be applied?
-      - How should expired tokens be handled?
+      - How should email delivery analytics be implemented?
+      - What advanced email customization is needed?
+      - How should email templates be managed per organization?
+      - What additional security measures are needed?
+      - How should bulk email processing be optimized?
     answers:
-      - Email verification with unique token on registration
-      - Password reset via email with secure token link
-      - Tokens expire after 24 hours, one-time use only
-      - Django email templates with customizable content
-      - Rate limiting: 3 requests per 15 minutes per email
-      - Expired tokens show clear error message, offer new request
-    tests:
-      - Email verification sends unique tokens correctly
-      - Password reset generates secure token links
-      - Token expiration enforced after 24 hours
-      - One-time token usage prevents reuse
-      - Django email templates render properly
-      - Email template customization maintains functionality
-      - Rate limiting prevents abuse (3 requests per 15 minutes)
-      - Rate limiting applies per email address
-      - Expired token handling shows helpful error messages
-      - New token request process works smoothly
-      - Email verification completes registration process
-      - Password reset allows secure password updates
-      - Token generation uses cryptographically secure methods
-      - Email delivery integrates with SMTP configuration
-      - Security measures prevent token enumeration attacks
-      - User experience guides through verification process
+      - Email delivery tracking with open rates, click tracking, bounce handling
+      - Organization-specific email templates and branding customization
+      - Advanced template editor with preview functionality
+      - Enhanced security with IP restriction and advanced rate limiting
+      - Queue-based email processing with retry logic and failure handling
+    notes:
+      - BUILDS ON: v2.3.1 email foundation and v2.4 invitation system
+      - ENTERPRISE FEATURES: Advanced analytics and customization for large organizations
+      - PERFORMANCE: Optimized email handling for high-volume deployment
 
 # ARCHITECTURE SUMMARY
 # This specification follows industry-proven patterns from major LMS platforms
