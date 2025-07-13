@@ -1,6 +1,6 @@
 project: Smart MCQ Platform
 started: 2025-01-10
-current_version: v1.4
+current_version: v1.4.1
 tech_stack: Django + PostgreSQL + Bootstrap
 
 version_progress:
@@ -17,5 +17,6 @@ version_progress:
   v1.3_Student_Result_View: completed
   v1.3.1_Persistent_Student_Result_Access: completed
   v1.4_Teacher_Result_View: completed
+  v1.4.1_Result_Release_Control: completed
 
-next_version: v1.4.1 Result Release Control (Answer Visibility Management)
+next_version: v1.5 Basic Question Shuffling + Simple Security Events
