@@ -1,0 +1,35 @@
+# Production deployment for your VPS
+version: '3.8'
+
+services:
+  smart-mcq:
+    build: .
+    container_name: smart_mcq_production
+    ports:
+      - "80:80"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-production-secret-key-change-me-12345}
+      - DB_NAME=smart_mcq_db
+      - DB_USER=mcq_user
+      - DB_PASSWORD=mcq_secure_password_2024
+      - DB_HOST=localhost
+      - DB_PORT=5432
+    volumes:
+      - mcq_data:/var/lib/postgresql/15/main
+      - mcq_media:/app/media
+      - mcq_logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  mcq_data:
+    driver: local
+  mcq_media:
+    driver: local
+  mcq_logs:
+    driver: local
