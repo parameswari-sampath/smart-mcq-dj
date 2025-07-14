@@ -85,9 +85,14 @@ SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-# Session settings
-SESSION_COOKIE_SECURE = False  # Set to True if using HTTPS
-CSRF_COOKIE_SECURE = False     # Set to True if using HTTPS
+# Cloudflare SSL settings
+USE_TLS = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = True
+
+# Session settings - Enable for HTTPS via Cloudflare
+SESSION_COOKIE_SECURE = True   # HTTPS required
+CSRF_COOKIE_SECURE = True      # HTTPS required
 SESSION_COOKIE_AGE = 3600      # 1 hour
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
