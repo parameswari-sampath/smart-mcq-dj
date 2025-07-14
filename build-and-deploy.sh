@@ -15,7 +15,8 @@ echo "========================================"
 # Function to build image
 build_image() {
     echo "📦 Building Docker image..."
-    docker build -t ${IMAGE_NAME}:${VERSION} .
+    docker build --no-cache -t ${IMAGE_NAME}:${VERSION} .
+
     docker tag ${IMAGE_NAME}:${VERSION} ${IMAGE_NAME}:${LATEST_TAG}
     echo "✅ Image built successfully!"
 }
