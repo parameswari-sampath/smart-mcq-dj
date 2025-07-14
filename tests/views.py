@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from .models import Test
 from questions.models import Question
 
@@ -24,13 +25,20 @@ def teacher_required(view_func):
 
 @teacher_required
 def test_list(request):
-    """List all tests created by the current teacher"""
+    """List all tests created by the current teacher with pagination"""
     tests = Test.objects.filter(
         created_by=request.user,
         is_active=True
-    )
+    ).order_by('-created_at')
+    
+    # Pagination
+    paginator = Paginator(tests, 10)  # Show 10 tests per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     context = {
-        'tests': tests
+        'tests': page_obj,
+        'page_obj': page_obj
     }
     return render(request, 'tests/test_list.html', context)
 

@@ -32,7 +32,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for session in sessions %}
+                                    {% for session in page_obj %}
                                     <tr>
                                         <td>
                                             <span class="badge {% if session.test.is_practice_test %}bg-success{% else %}bg-warning{% endif %} me-2">
@@ -88,6 +88,13 @@
                             </table>
                         </div>
                     </div>
+                    
+                    <!-- Pagination -->
+                    {% if page_obj %}
+                    <div class="card-footer bg-light">
+                        {% include 'components/pagination.html' with page_obj=page_obj %}
+                    </div>
+                    {% endif %}
                 </div>
             {% else %}
                 <div class="card">

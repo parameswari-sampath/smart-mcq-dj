@@ -149,7 +149,7 @@
                     <!-- Completed Tests -->
                     {% if completed_sessions %}
                     <div class="mb-4">
-                        <h6 class="text-secondary"><i class="fas fa-check-circle"></i> Completed Tests</h6>
+                        <h6 class="text-secondary"><i class="fas fa-check-circle"></i> Completed Tests {% if completed_page_obj %}({{ completed_page_obj.paginator.count }} total){% endif %}</h6>
                         {% for session in completed_sessions %}
                         <div class="card border-secondary mb-2">
                             <div class="card-body">
@@ -185,6 +185,13 @@
                             </div>
                         </div>
                         {% endfor %}
+                        
+                        <!-- Pagination for completed tests -->
+                        {% if completed_page_obj and completed_page_obj.has_other_pages %}
+                        <div class="mt-3">
+                            {% include 'components/pagination.html' with page_obj=completed_page_obj %}
+                        </div>
+                        {% endif %}
                     </div>
                     {% endif %}
                     

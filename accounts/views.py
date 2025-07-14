@@ -115,7 +115,14 @@ def dashboard_view(request):
                     
                     session.average_score = round(sum(scores) / len(scores)) if scores else 0
             
-            context['teacher_sessions'] = teacher_sessions
+            # Pagination for teacher sessions on dashboard
+            from django.core.paginator import Paginator
+            paginator = Paginator(teacher_sessions, 8)  # Show 8 sessions per page on dashboard
+            page_number = request.GET.get('page')
+            page_obj = paginator.get_page(page_number)
+            
+            context['teacher_sessions'] = page_obj
+            context['page_obj'] = page_obj
             return render(request, 'accounts/teacher_dashboard.html', context)
         else:
             # For students, get ONLY test sessions they have joined via access code
@@ -173,10 +180,17 @@ def dashboard_view(request):
                 
                 completed_sessions.append(session)
             
+            # Pagination for completed sessions on student dashboard
+            from django.core.paginator import Paginator
+            paginator = Paginator(completed_sessions, 10)  # Show 10 completed tests per page
+            page_number = request.GET.get('page')
+            page_obj = paginator.get_page(page_number)
+            
             context.update({
                 'upcoming_sessions': upcoming_sessions,
                 'ongoing_sessions': ongoing_sessions,
-                'completed_sessions': completed_sessions,
+                'completed_sessions': page_obj,
+                'completed_page_obj': page_obj,
             })
             
             return render(request, 'accounts/student_dashboard.html', context)
@@ -788,9 +802,16 @@ def teacher_test_results(request, session_id):
         else:  # sort by name (default)
             student_results.sort(key=lambda x: x['student_name'].lower())
         
+        # Pagination for student results
+        from django.core.paginator import Paginator
+        paginator = Paginator(student_results, 15)  # Show 15 students per page
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        
         context = {
             'test_session': test_session,
-            'student_results': student_results,
+            'student_results': page_obj,
+            'page_obj': page_obj,
             'statistics': statistics,
             'current_sort': sort_by,
         }

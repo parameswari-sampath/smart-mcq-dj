@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.http import Http404
 from django.utils import timezone
 from datetime import timezone as dt_timezone
+from django.core.paginator import Paginator
 from .models import TestSession
 from tests.models import Test
 
@@ -21,9 +22,18 @@ def teacher_required(view_func):
 
 @teacher_required
 def session_list(request):
-    """Display list of test sessions created by the teacher"""
+    """Display list of test sessions created by the teacher with pagination"""
     sessions = TestSession.objects.filter(created_by=request.user).order_by('-start_time')
-    return render(request, 'test_sessions/session_list.html', {'sessions': sessions})
+    
+    # Pagination
+    paginator = Paginator(sessions, 10)  # Show 10 sessions per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'test_sessions/session_list.html', {
+        'sessions': page_obj,
+        'page_obj': page_obj
+    })
 
 
 @teacher_required

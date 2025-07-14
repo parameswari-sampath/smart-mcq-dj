@@ -29,7 +29,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for question in questions %}
+                                {% for question in page_obj %}
                                 <tr>
                                     <td>
                                         <strong>{{ question.title|truncatechars:60 }}</strong>
@@ -65,6 +65,13 @@
                         </table>
                     </div>
                 </div>
+                
+                <!-- Pagination -->
+                {% if page_obj %}
+                <div class="card-footer bg-light">
+                    {% include 'components/pagination.html' with page_obj=page_obj %}
+                </div>
+                {% endif %}
             </div>
         {% else %}
             <div class="card">

@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from .models import Question, Choice
 
 
@@ -23,13 +24,20 @@ def teacher_required(view_func):
 
 @teacher_required
 def question_list(request):
-    """List all questions created by the current teacher"""
+    """List all questions created by the current teacher with pagination"""
     questions = Question.objects.filter(
         created_by=request.user,
         is_active=True
-    )
+    ).order_by('-created_at')
+    
+    # Pagination
+    paginator = Paginator(questions, 10)  # Show 10 questions per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     context = {
-        'questions': questions
+        'questions': page_obj,
+        'page_obj': page_obj
     }
     return render(request, 'questions/question_list.html', context)
 
