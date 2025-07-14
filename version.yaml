@@ -519,6 +519,60 @@ versions:
       - PEDAGOGICAL FLEXIBILITY: Supports both formative and summative assessment needs
       - ACADEMIC INTEGRITY: Prevents answer sharing between students taking test at different times
       - TEACHER WORKFLOW: Efficient bulk operations while allowing individual exceptions
+    status: COMPLETED
+
+  v1.4.2: UI Enhancement with shadcn/ui Design System Integration
+    questions:
+      - How should the platform transition from basic Bootstrap to modern SaaS design?
+      - What components need updating to follow modern design system patterns?
+      - How should shadcn/ui be integrated with existing Bootstrap infrastructure?
+      - What consistency rules should be established for future development?
+      - How should the component inventory be maintained and tracked?
+    answers:
+      - Modern SaaS-style UI with clean, professional design following industry standards
+      - Complete design system integration using shadcn/ui color tokens and patterns
+      - Maintain Bootstrap 5 grid system while adopting shadcn/ui components and styling
+      - Comprehensive design system documentation with implementation guidelines
+      - YAML-based component tracking with completion status for consistent development
+    industry_solution:
+      - VERCEL/NEXT.JS APPROACH: shadcn/ui provides modern, accessible component patterns
+      - DESIGN TOKENS: HSL-based color system with CSS custom properties for consistent theming
+      - TAILWIND INTEGRATION: Utility-first styling with semantic design tokens
+      - COMPONENT LIBRARY: Pre-built, accessible components with TypeScript support
+      - BOOTSTRAP COMPATIBILITY: Maintain existing grid system while upgrading components
+    implementation:
+      - Integration of shadcn/ui design tokens (--primary, --border, --radius)
+      - Updated navbar with clean, minimal SaaS design (white background, simplified layout)
+      - Enhanced card components with proper shadows and hover states
+      - Form components with focus-visible states and proper validation styling
+      - Comprehensive pagination system across all list pages
+      - Design system documentation with implementation guidelines and component patterns
+      - Component inventory tracking 255 UI components with completion status
+    deliverables:
+      - DESIGN_SYSTEM.md: Complete 477-line design system documentation
+      - COMPONENT_INVENTORY.md: 398-line comprehensive component catalog
+      - COMPONENT_STATUS.yaml: 255 components tracked with completion status
+      - Enhanced templates with modern SaaS styling patterns
+      - Updated navbar with professional, minimal design
+      - Pagination implementation across 6 major list pages
+    tests:
+      - Design system documentation provides clear implementation guidelines
+      - shadcn/ui color tokens integrate properly with existing Bootstrap components
+      - Modern card components display with proper shadows and hover effects
+      - Form components implement focus-visible states with ring utilities
+      - Pagination works consistently across all list pages with query preservation
+      - Component inventory accurately tracks all platform components
+      - YAML status tracking helps maintain development consistency
+      - Mobile responsive design maintained across all updated components
+      - Accessibility features preserved with shadcn/ui integration
+      - Performance impact minimal with optimized CSS delivery
+    notes:
+      - DESIGN EVOLUTION: Transitions platform from basic Bootstrap to modern SaaS design standards
+      - COMPONENT FOUNDATION: Establishes design system for consistent future development
+      - INDUSTRY ALIGNMENT: Adopts proven design patterns from leading SaaS platforms
+      - ACCESSIBILITY FIRST: Maintains and enhances accessibility with proper focus states
+      - SCALABILITY: Provides foundation for rapid, consistent component development
+      - DOCUMENTATION: Creates comprehensive guidelines for design system maintenance
 
   v1.5: Basic Question Shuffling + Simple Security Events (SIMPLIFIED)
     questions:
