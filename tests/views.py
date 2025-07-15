@@ -58,7 +58,6 @@ def test_create(request):
             description=request.POST['description'],
             time_limit_minutes=int(request.POST['time_limit_minutes']),
             category=request.POST.get('category', ''),
-            organization=request.user.profile.organization,
             created_by=request.user,
             # v1.4.1 Result Release Control fields
             is_practice_test=request.POST.get('is_practice_test', 'True') == 'True',

@@ -11,8 +11,8 @@ class ChoiceInline(admin.TabularInline):
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ['title', 'category', 'difficulty', 'organization', 'created_by', 'created_at', 'is_active']
-    list_filter = ['difficulty', 'category', 'organization', 'is_active']
+    list_display = ['title', 'category', 'difficulty', 'created_by', 'created_at', 'is_active']
+    list_filter = ['difficulty', 'category', 'is_active']
     search_fields = ['title', 'description', 'category']
     readonly_fields = ['created_at', 'updated_at']
     inlines = [ChoiceInline]

@@ -140,7 +140,7 @@ def csv_preview(request):
                 total_count = len(import_data)
                 
                 for row_data in import_data:
-                    # Check for duplicates (user-based, not organization-based)
+                    # Check for duplicates (teacher-specific)
                     existing = Question.objects.filter(
                         title=row_data['title'],
                         created_by=request.user,
@@ -157,7 +157,6 @@ def csv_preview(request):
                         description=row_data['description'],
                         category=row_data['category'],
                         difficulty=row_data['difficulty'],
-                        organization=request.user.profile.organization,
                         created_by=request.user
                     )
                     

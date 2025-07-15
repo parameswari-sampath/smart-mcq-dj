@@ -421,9 +421,36 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear timer state from localStorage
         localStorage.removeItem(timerKey);
         
-        // Auto-submit the test after 2 seconds
+        // Auto-submit the test after 2 seconds using fetch with CSRF token
         setTimeout(() => {
-            document.getElementById('submission-form').submit();
+            fetch(`{% url 'submit_test' test_attempt.id %}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    auto_submit: true
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Redirect to results page
+                    window.location.href = data.redirect_url || '{% url "dashboard" %}';
+                } else {
+                    console.error('Auto-submit failed:', data.error);
+                    showWarningAlert('Auto-submit failed: ' + data.error, 'danger');
+                    // Re-enable submit button for manual submission
+                    document.getElementById('submit-test-btn').disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Auto-submit error:', error);
+                showWarningAlert('Auto-submit failed. Please submit manually.', 'danger');
+                // Re-enable submit button for manual submission
+                document.getElementById('submit-test-btn').disabled = false;
+            });
         }, 2000);
     }
     

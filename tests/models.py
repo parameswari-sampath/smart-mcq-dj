@@ -1,6 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import User
-from accounts.models import Organization
 from questions.models import Question
 from smart_mcq.constants import ResultReleaseModes, AnswerVisibilityLevels, TestTypes
 
@@ -12,7 +11,6 @@ class Test(models.Model):
     time_limit_minutes = models.PositiveIntegerField(default=60)
     category = models.CharField(max_length=100, blank=True)
     questions = models.ManyToManyField(Question, blank=True)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

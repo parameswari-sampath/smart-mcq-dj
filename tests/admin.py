@@ -4,8 +4,8 @@ from .models import Test
 
 @admin.register(Test)
 class TestAdmin(admin.ModelAdmin):
-    list_display = ['title', 'category', 'get_question_count', 'time_limit_minutes', 'organization', 'created_by', 'created_at', 'is_active']
-    list_filter = ['category', 'time_limit_minutes', 'organization', 'is_active']
+    list_display = ['title', 'category', 'get_question_count', 'time_limit_minutes', 'created_by', 'created_at', 'is_active']
+    list_filter = ['category', 'time_limit_minutes', 'is_active']
     search_fields = ['title', 'description', 'category']
     readonly_fields = ['created_at', 'updated_at']
     filter_horizontal = ['questions']
