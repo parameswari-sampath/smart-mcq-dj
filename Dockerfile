@@ -52,7 +52,7 @@ RUN mkdir -p /app/staticfiles /app/media /app/logs \
 
 # Collect static files as app user
 USER app
-RUN python manage.py collectstatic --noinput --settings=smart_mcq.production_settings
+RUN /app/.venv/bin/python manage.py collectstatic --noinput --settings=smart_mcq.production_settings
 
 # Switch back to root for service management
 USER root

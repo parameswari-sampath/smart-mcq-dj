@@ -9,7 +9,7 @@ export DJANGO_SETTINGS_MODULE=smart_mcq.production_settings
 
 # Wait for database to be ready
 echo "⏳ Waiting for database..."
-until python -c "
+until /app/.venv/bin/python -c "
 import os
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'smart_mcq.production_settings')
 import django
@@ -24,11 +24,11 @@ done
 
 # Run migrations
 echo "📦 Running database migrations..."
-python manage.py migrate --noinput
+/app/.venv/bin/python manage.py migrate --noinput
 
 # Create superuser if it doesn't exist
 echo "👤 Creating superuser if needed..."
-python -c "
+/app/.venv/bin/python -c "
 import os
 import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'smart_mcq.production_settings')
@@ -44,7 +44,7 @@ else:
 
 # Start Django with Gunicorn
 echo "🔧 Starting Django application..."
-gunicorn smart_mcq.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60 &
+/app/.venv/bin/gunicorn smart_mcq.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60 &
 
 # Start Nginx
 echo "🔧 Starting Nginx..."

@@ -8,7 +8,7 @@ echo "====================================="
 
 # Stop and remove existing containers
 echo "🛑 Stopping existing containers..."
-docker-compose down || true
+docker-compose down --remove-orphans || true
 
 # Remove all images related to this project
 echo "🗑️ Removing old images..."
@@ -26,7 +26,7 @@ git pull origin main
 
 # Build and deploy
 echo "🔨 Building and deploying..."
-docker-compose up --build -d
+docker-compose up --build -d --remove-orphans
 
 echo ""
 echo "🎉 Deployment complete!"
