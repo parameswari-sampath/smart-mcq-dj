@@ -24,13 +24,13 @@
                         <div class="col-md-8">
                             <label for="title" class="form-label">Question Title *</label>
                             <input type="text" class="form-control{% if error %} is-invalid{% endif %}" id="title" name="title" 
-                                   value="{{ form_data.title|default:question.title|default:'' }}" required maxlength="500"
+                                   value="{% if form_data.title %}{{ form_data.title }}{% elif question %}{{ question.title }}{% endif %}" required maxlength="500"
                                    placeholder="e.g., What is the capital of France?">
                         </div>
                         <div class="col-md-4">
                             <label for="category" class="form-label">Category</label>
                             <input type="text" class="form-control" id="category" name="category" 
-                                   value="{{ form_data.category|default:question.category|default:'' }}" maxlength="100"
+                                   value="{% if form_data.category %}{{ form_data.category }}{% elif question %}{{ question.category }}{% endif %}" maxlength="100"
                                    placeholder="e.g., Geography, Science">
                         </div>
                     </div>
@@ -39,15 +39,15 @@
                         <div class="col-md-8">
                             <label for="description" class="form-label">Question Description *</label>
                             <textarea class="form-control" id="description" name="description" 
-                                      rows="4" required placeholder="Provide detailed question description or additional context here...">{{ form_data.description|default:question.description|default:'' }}</textarea>
+                                      rows="4" required placeholder="Provide detailed question description or additional context here...">{% if form_data.description %}{{ form_data.description }}{% elif question %}{{ question.description }}{% endif %}</textarea>
                         </div>
                         <div class="col-md-4">
                             <label for="difficulty" class="form-label">Difficulty *</label>
                             <select class="form-select" id="difficulty" name="difficulty" required>
                                 <option value="">Select difficulty</option>
-                                <option value="easy" {% if form_data.difficulty == 'easy' or question.difficulty == 'easy' %}selected{% endif %}>Easy</option>
-                                <option value="medium" {% if form_data.difficulty == 'medium' or question.difficulty == 'medium' %}selected{% endif %}>Medium</option>
-                                <option value="hard" {% if form_data.difficulty == 'hard' or question.difficulty == 'hard' %}selected{% endif %}>Hard</option>
+                                <option value="easy" {% if form_data.difficulty == 'easy' or question and question.difficulty == 'easy' %}selected{% endif %}>Easy</option>
+                                <option value="medium" {% if form_data.difficulty == 'medium' or question and question.difficulty == 'medium' %}selected{% endif %}>Medium</option>
+                                <option value="hard" {% if form_data.difficulty == 'hard' or question and question.difficulty == 'hard' %}selected{% endif %}>Hard</option>
                             </select>
                         </div>
                     </div>
@@ -56,7 +56,7 @@
                         <div class="col-md-6">
                             <label for="image" class="form-label">Question Image (optional)</label>
                             <input type="file" class="form-control" id="image" name="image" accept="image/*">
-                            {% if question.image %}
+                            {% if question and question.image %}
                                 <small class="text-muted">Current image: {{ question.image.name }}</small>
                             {% endif %}
                         </div>
@@ -73,7 +73,7 @@
                                 </span>
                                 <span class="input-group-text">A</span>
                                 <input type="text" class="form-control" name="choice_a" 
-                                       value="{{ form_data.choice_a|default:choices.0.text|default:'' }}" placeholder="e.g., Paris" required>
+                                       value="{% if form_data.choice_a %}{{ form_data.choice_a }}{% elif choices.0 %}{{ choices.0.text }}{% endif %}" placeholder="e.g., Paris" required>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -84,7 +84,7 @@
                                 </span>
                                 <span class="input-group-text">B</span>
                                 <input type="text" class="form-control" name="choice_b" 
-                                       value="{{ form_data.choice_b|default:choices.1.text|default:'' }}" placeholder="e.g., London" required>
+                                       value="{% if form_data.choice_b %}{{ form_data.choice_b }}{% elif choices.1 %}{{ choices.1.text }}{% endif %}" placeholder="e.g., London" required>
                             </div>
                         </div>
                     </div>
@@ -98,7 +98,7 @@
                                 </span>
                                 <span class="input-group-text">C</span>
                                 <input type="text" class="form-control" name="choice_c" 
-                                       value="{{ form_data.choice_c|default:choices.2.text|default:'' }}" placeholder="e.g., Berlin" required>
+                                       value="{% if form_data.choice_c %}{{ form_data.choice_c }}{% elif choices.2 %}{{ choices.2.text }}{% endif %}" placeholder="e.g., Berlin" required>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -109,7 +109,7 @@
                                 </span>
                                 <span class="input-group-text">D</span>
                                 <input type="text" class="form-control" name="choice_d" 
-                                       value="{{ form_data.choice_d|default:choices.3.text|default:'' }}" placeholder="e.g., Madrid" required>
+                                       value="{% if form_data.choice_d %}{{ form_data.choice_d }}{% elif choices.3 %}{{ choices.3.text }}{% endif %}" placeholder="e.g., Madrid" required>
                             </div>
                         </div>
                     </div>
