@@ -46,9 +46,24 @@ def question_list(request):
 def question_create(request):
     """Create a new question with 4 choices"""
     if request.method == 'POST':
+        # Check for duplicate questions (teacher-specific)
+        title = request.POST['title'].strip()
+        existing_question = Question.objects.filter(
+            title=title,
+            created_by=request.user,
+            is_active=True
+        ).exists()
+        
+        if existing_question:
+            messages.error(request, f'A question with the title "{title}" already exists in your question bank.')
+            return render(request, 'questions/question_form.html', {
+                'form_data': request.POST,
+                'error': True
+            })
+        
         # Create question
         question = Question.objects.create(
-            title=request.POST['title'],
+            title=title,
             description=request.POST['description'],
             category=request.POST.get('category', ''),
             difficulty=request.POST['difficulty'],
@@ -79,7 +94,10 @@ def question_create(request):
         messages.success(request, 'Question created successfully!')
         return redirect('questions:question_list')
     
-    return render(request, 'questions/question_form.html')
+    return render(request, 'questions/question_form.html', {
+        'question': None,
+        'choices': []
+    })
 
 
 @teacher_required
@@ -110,8 +128,26 @@ def question_edit(request, pk):
     )
     
     if request.method == 'POST':
+        # Check for duplicate questions (teacher-specific, excluding current question)
+        title = request.POST['title'].strip()
+        existing_question = Question.objects.filter(
+            title=title,
+            created_by=request.user,
+            is_active=True
+        ).exclude(pk=question.pk).exists()
+        
+        if existing_question:
+            messages.error(request, f'A question with the title "{title}" already exists in your question bank.')
+            context = {
+                'question': question,
+                'choices': question.choices.all().order_by('label'),
+                'form_data': request.POST,
+                'error': True
+            }
+            return render(request, 'questions/question_form.html', context)
+        
         # Update question
-        question.title = request.POST['title']
+        question.title = title
         question.description = request.POST['description']
         question.category = request.POST.get('category', '')
         question.difficulty = request.POST['difficulty']
