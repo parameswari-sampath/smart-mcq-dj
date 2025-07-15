@@ -6,6 +6,12 @@ set -e
 echo "🚀 Smart MCQ Platform - Simple Deploy"
 echo "====================================="
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+echo "📁 Working directory: $(pwd)"
+
 # Stop and remove existing containers
 echo "🛑 Stopping existing containers..."
 docker-compose down --remove-orphans || true
