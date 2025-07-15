@@ -140,10 +140,10 @@ def csv_preview(request):
                 total_count = len(import_data)
                 
                 for row_data in import_data:
-                    # Check for duplicates
+                    # Check for duplicates (user-based, not organization-based)
                     existing = Question.objects.filter(
                         title=row_data['title'],
-                        organization=request.user.profile.organization,
+                        created_by=request.user,
                         is_active=True
                     ).exists()
                     
