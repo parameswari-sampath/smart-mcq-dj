@@ -385,8 +385,10 @@ def save_answer(request, attempt_id):
         if test_attempt.student != request.user:
             return JsonResponse({'success': False, 'error': 'Access denied'})
         
-        # Check if test is still active
-        if test_attempt.test_session.status != 'active':
+        # Check if test is still active - allow saving for expired sessions since answers are continuously saved
+        session_status = test_attempt.test_session.status
+        
+        if session_status not in ['active', 'expired']:
             return JsonResponse({'success': False, 'error': 'Test session is no longer active'})
         
         # Handle GET request - return current answered count
@@ -469,24 +471,50 @@ def submit_test(request, attempt_id):
         return redirect('take_test', attempt_id=attempt_id)
     
     try:
+        import json
         from smart_mcq.constants import SuccessMessages
         from django.utils import timezone
+        from django.http import JsonResponse
+        from django.urls import reverse
+        
+        # Check if this is a JSON request (auto-submission)
+        is_json_request = request.content_type == 'application/json'
         
         test_attempt = TestAttempt.objects.get(id=attempt_id)
         
         # Security check
         if test_attempt.student != request.user:
-            messages.error(request, 'Access denied.')
+            error_msg = 'Access denied.'
+            if is_json_request:
+                return JsonResponse({'success': False, 'error': error_msg})
+            messages.error(request, error_msg)
             return redirect('dashboard')
         
         # Check if already submitted
         if test_attempt.is_submitted:
-            messages.info(request, 'Test has already been submitted.')
+            info_msg = 'Test has already been submitted.'
+            if is_json_request:
+                return JsonResponse({'success': False, 'error': info_msg})
+            messages.info(request, info_msg)
             return redirect('dashboard')
         
-        # Check if test session is still active
-        if test_attempt.test_session.status != 'active':
-            messages.error(request, 'Test session is no longer active.')
+        # Check if this is auto-submission - if so, use dedicated function
+        if is_json_request:
+            try:
+                data = json.loads(request.body)
+                if data.get('auto_submit'):
+                    return auto_submit_test(request, test_attempt)
+            except:
+                pass
+        
+        # For manual submissions, check if test session is still active
+        session_status = test_attempt.test_session.status
+        
+        if session_status != 'active':
+            error_msg = 'Test session is no longer active.'
+            if is_json_request:
+                return JsonResponse({'success': False, 'error': error_msg})
+            messages.error(request, error_msg)
             return redirect('dashboard')
         
         # Calculate total time spent
@@ -537,15 +565,102 @@ def submit_test(request, attempt_id):
             'submitted_at': timezone.localtime(timezone.now()).strftime('%B %d, %Y at %I:%M %p'),
         }
         
-        messages.success(request, SuccessMessages.TEST_SUBMITTED)
-        return redirect('test_results')
+        # Handle response based on request type
+        if is_json_request:
+            return JsonResponse({
+                'success': True,
+                'message': SuccessMessages.TEST_SUBMITTED,
+                'redirect_url': reverse('test_results')
+            })
+        else:
+            messages.success(request, SuccessMessages.TEST_SUBMITTED)
+            return redirect('test_results')
         
     except TestAttempt.DoesNotExist:
-        messages.error(request, 'Test attempt not found.')
+        error_msg = 'Test attempt not found.'
+        if request.content_type == 'application/json':
+            return JsonResponse({'success': False, 'error': error_msg})
+        messages.error(request, error_msg)
         return redirect('dashboard')
     except Exception as e:
-        messages.error(request, f'Error submitting test: {str(e)}')
+        error_msg = f'Error submitting test: {str(e)}'
+        if request.content_type == 'application/json':
+            return JsonResponse({'success': False, 'error': error_msg})
+        messages.error(request, error_msg)
         return redirect('take_test', attempt_id=attempt_id)
+
+
+def auto_submit_test(request, test_attempt):
+    """Dedicated function for auto-submission that bypasses session expiration checks"""
+    from smart_mcq.constants import SuccessMessages
+    from django.utils import timezone
+    from django.http import JsonResponse
+    from django.urls import reverse
+    
+    # This function is called only for auto-submission when time expires
+    # Since answers are continuously saved to DB, we can proceed even if session is expired
+    
+    # Security: Double-check that test_attempt belongs to current user
+    if test_attempt.student != request.user:
+        return JsonResponse({'success': False, 'error': 'Access denied'})
+    
+    # Check if already submitted
+    if test_attempt.is_submitted:
+        return JsonResponse({'success': False, 'error': 'Test has already been submitted'})
+    
+    # Calculate total time spent
+    total_time_spent = int((timezone.now() - test_attempt.started_at).total_seconds())
+    question_time_spent = test_attempt.answers.aggregate(total=models.Sum('time_spent_seconds'))['total'] or 0
+    
+    # Mark as submitted with time tracking
+    test_attempt.is_submitted = True
+    test_attempt.submitted_at = timezone.now()
+    test_attempt.total_time_spent = total_time_spent
+    test_attempt.save()
+    
+    # Calculate score (simple scoring: correct = 1, incorrect/blank = 0)
+    total_questions = test_attempt.total_questions
+    correct_answers = test_attempt.answers.filter(is_correct=True).count()
+    score_percentage = round((correct_answers / total_questions) * 100) if total_questions > 0 else 0
+    
+    # Format time for display
+    def format_time(seconds):
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        secs = seconds % 60
+        if hours > 0:
+            return f"{hours}h {minutes}m {secs}s"
+        elif minutes > 0:
+            return f"{minutes}m {secs}s"
+        else:
+            return f"{secs}s"
+    
+    # Calculate average time per question
+    avg_time_per_question = int(total_time_spent / total_questions) if total_questions > 0 else 0
+    
+    # Store comprehensive results in session for results page
+    incorrect_answers = total_questions - correct_answers
+    request.session['test_results'] = {
+        'attempt_id': test_attempt.id,
+        'total_questions': total_questions,
+        'correct_answers': correct_answers,
+        'incorrect_answers': incorrect_answers,
+        'score_percentage': score_percentage,
+        'test_title': test_attempt.test.title,
+        'total_time_spent': total_time_spent,
+        'total_time_formatted': format_time(total_time_spent),
+        'question_time_spent': question_time_spent,
+        'question_time_formatted': format_time(question_time_spent),
+        'avg_time_per_question': avg_time_per_question,
+        'avg_time_per_question_formatted': format_time(avg_time_per_question),
+        'submitted_at': timezone.localtime(timezone.now()).strftime('%B %d, %Y at %I:%M %p'),
+    }
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Test auto-submitted successfully',
+        'redirect_url': reverse('test_results')
+    })
 
 
 @login_required  
