@@ -1,73 +1,60 @@
-# Multi-stage build for optimized production image
+# Production Dockerfile for Smart MCQ Platform
+# Multi-stage build optimized for uv and production deployment
+
 FROM python:3.11-slim AS builder
 
-# Install system dependencies for building
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Install uv - fast Python package manager
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-# Create virtual environment
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Set working directory for build
+WORKDIR /app
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies into /app/.venv
+RUN uv sync --frozen --no-cache --no-dev
 
 # Production stage
 FROM python:3.11-slim
 
-# Install runtime dependencies
+# Install runtime system dependencies
 RUN apt-get update && apt-get install -y \
-    postgresql-15 \
-    postgresql-client-15 \
-    postgresql-contrib-15 \
+    postgresql-client \
     nginx \
     curl \
-    sudo \
-    && rm -rf /var/lib/apt/lists/*
-
-# Configure PostgreSQL
-RUN service postgresql start && \
-    sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';" && \
-    service postgresql stop
-
-# Configure PostgreSQL settings
-RUN echo "listen_addresses = '*'" >> /etc/postgresql/15/main/postgresql.conf && \
-    echo "shared_buffers = 256MB" >> /etc/postgresql/15/main/postgresql.conf && \
-    echo "max_connections = 100" >> /etc/postgresql/15/main/postgresql.conf && \
-    echo "work_mem = 8MB" >> /etc/postgresql/15/main/postgresql.conf
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Copy virtual environment from builder
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+COPY --from=builder /app/.venv /app/.venv
 
-# Create app user
+# Add venv to path
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Create app user for security
 RUN useradd --create-home --shell /bin/bash app
 
-# Set work directory
+# Set working directory
 WORKDIR /app
 
 # Copy application code
-COPY . /app/
+COPY --chown=app:app . .
 
-# Create necessary directories
-RUN mkdir -p /app/staticfiles /app/media /app/logs
+# Copy production configuration
+COPY --chown=app:app docker/nginx.conf /etc/nginx/sites-available/default
+COPY --chown=app:app docker/production_settings.py /app/smart_mcq/production_settings.py
 
-# Copy configuration files
-COPY docker/nginx.conf /etc/nginx/sites-available/default
-COPY docker/production_settings.py /app/smart_mcq/production_settings.py
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/staticfiles /app/media /app/logs \
+    && chown -R app:app /app \
+    && chmod +x /app/docker/entrypoint.simple.sh
 
-# Set permissions
-RUN chown -R app:app /app
-RUN chmod +x /app/docker/entrypoint.sh
-
-# Collect static files
+# Collect static files as app user
 USER app
 RUN python manage.py collectstatic --noinput --settings=smart_mcq.production_settings
 
-# Switch back to root for supervisor
+# Switch back to root for service management
 USER root
 
 # Expose port
@@ -77,5 +64,5 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost/health/ || exit 1
 
-# Start supervisor
-CMD ["/app/docker/entrypoint.sh"]
+# Use simple entrypoint (external database)
+CMD ["/app/docker/entrypoint.simple.sh"]
