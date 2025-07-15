@@ -574,6 +574,48 @@ versions:
       - SCALABILITY: Provides foundation for rapid, consistent component development
       - DOCUMENTATION: Creates comprehensive guidelines for design system maintenance
 
+  v1.4.3: Basic Question CSV Import (Teacher Productivity)
+    questions:
+      - How should teachers import questions via CSV file?
+      - What CSV format should be supported?
+      - How should validation and error handling work?
+      - Should there be a CSV template download?
+      - How should duplicate questions be handled?
+      - What file size limits are appropriate?
+    answers:
+      - Simple CSV upload with predefined column structure
+      - Standard format: title, description, choice_a, choice_b, choice_c, choice_d, correct_answer, category, difficulty
+      - Row-by-row validation with clear error messages and line number references
+      - Downloadable CSV template with sample questions and format guidelines
+      - Skip duplicates with warning messages, no automatic merging
+      - 5MB file size limit, maximum 500 questions per import
+    implementation:
+      - CSV upload form in question bank with file validation
+      - CSV parsing with pandas or Python csv module
+      - Batch question creation with transaction rollback on errors
+      - Template generation view for CSV format download
+      - Import preview showing questions before final import
+      - Error reporting with specific line numbers and validation issues
+    tests:
+      - CSV file upload accepts properly formatted files
+      - Template download provides correct format and examples
+      - Row validation catches missing required fields
+      - Error messages show specific line numbers and issues
+      - Import preview displays parsed questions correctly
+      - Batch import creates all questions or rolls back on error
+      - Duplicate detection works based on title and organization
+      - File size validation prevents oversized uploads
+      - CSV parsing handles special characters and quotes
+      - Import success shows count of questions created
+      - Teacher can only import to their own organization
+      - Invalid CSV format shows helpful error messages
+    notes:
+      - PRODUCTIVITY: Addresses teacher workflow efficiency from v0.3 limitation
+      - SIMPLE FORMAT: Basic CSV without complex nested data
+      - ERROR HANDLING: Clear feedback for troubleshooting import issues
+      - BATCH OPERATION: Improves efficiency over manual question entry
+      - FOUNDATION: Prepares for advanced bulk operations in v3.11
+
   v1.5.1: Basic Question Shuffling (SIMPLIFIED)
     questions:
       - How should question order be randomized?
@@ -1637,29 +1679,39 @@ versions:
       - SECURITY: Addresses open registration security concerns
       - USABILITY: Provides essential user account management features
 
-  v3.11: Question Bank Enhancement (Bulk Operations & Search)
+  v3.11: Question Bank Enhancement (Advanced Bulk Operations & Search)
     questions:
-      - How should bulk question import/export work?
-      - What search and filtering capabilities are needed?
+      - What advanced search and filtering capabilities are needed?
       - How should question versioning be implemented?
       - Should there be question sharing between teachers?
       - What analytics are needed for question usage?
+      - How should bulk edit/delete operations work?
     answers:
-      - CSV/Excel import with template, bulk edit/delete operations
-      - Search by title/category/difficulty, filter by usage/date
-      - Question history tracking with restore previous versions
-      - Question sharing within organization with permission controls
-      - Usage analytics showing question performance and difficulty
+      - Advanced search by title/category/difficulty, filter by usage/date/performance
+      - Question history tracking with restore previous versions capability
+      - Question sharing within organization with permission controls and approval workflow
+      - Usage analytics showing question performance, difficulty analysis, and effectiveness metrics
+      - Bulk edit operations for category/difficulty changes, bulk delete with confirmation
     implementation:
-      - Bulk import/export views with file validation
-      - Search and filter interface with advanced options
-      - Question versioning model with change history
-      - Sharing permissions and collaboration features
-      - Analytics dashboard for question insights
+      - Advanced search and filter interface with multiple criteria
+      - Question versioning model with change history and diff viewing
+      - Sharing permissions and collaboration features with approval workflow
+      - Analytics dashboard for question insights and performance metrics
+      - Bulk operations interface with preview and confirmation steps
+    tests:
+      - Advanced search works with multiple filter combinations
+      - Question versioning tracks all changes with timestamps
+      - Question sharing workflow includes approval process
+      - Analytics dashboard shows meaningful performance insights
+      - Bulk operations complete successfully with rollback on errors
+      - Search performance remains fast with large question banks
+      - Version history shows clear change differences
+      - Sharing permissions respect organization boundaries
     notes:
-      - SOLVES: Question management limitations from v0.3
-      - EFFICIENCY: Enables large-scale question management
-      - COLLABORATION: Supports teacher question sharing
+      - BUILDS ON: v1.4.3 CSV import foundation for basic bulk operations
+      - EFFICIENCY: Enables large-scale question management for enterprise use
+      - COLLABORATION: Supports teacher question sharing with proper governance
+      - ANALYTICS: Provides data-driven insights for question quality improvement
 
   v3.12: Test Bank Advanced Features (Templates & Randomization)
     questions:
