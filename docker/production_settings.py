@@ -49,21 +49,30 @@ CSRF_COOKIE_HTTPONLY = False
 CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
 
 # Database configuration for Docker
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'smart_mcq_db'),
-        'USER': os.environ.get('DB_USER', 'mcq_user'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'mcq_secure_password_2024'),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
-        'CONN_MAX_AGE': 300,
-        'CONN_HEALTH_CHECKS': True,
-        'OPTIONS': {
-            'connect_timeout': 10,
+# If DATABASE_URL is provided, use it (this will override the imported settings)
+# Otherwise, use individual environment variables
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    # DATABASE_URL is set, let the main settings.py handle it
+    # Don't override DATABASES here
+    pass
+else:
+    # Fallback to individual environment variables
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'smart_mcq_db'),
+            'USER': os.environ.get('DB_USER', 'mcq_user'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'mcq_secure_password_2024'),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+            'CONN_MAX_AGE': 300,
+            'CONN_HEALTH_CHECKS': True,
+            'OPTIONS': {
+                'connect_timeout': 10,
+            }
         }
     }
-}
 
 # Static files
 STATIC_URL = '/static/'

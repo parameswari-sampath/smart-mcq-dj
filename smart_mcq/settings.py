@@ -87,19 +87,34 @@ WSGI_APPLICATION = 'smart_mcq.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 # Database configuration using Neon DB
-tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': tmpPostgres.path.replace('/', ''),
-        'USER': tmpPostgres.username,
-        'PASSWORD': tmpPostgres.password,
-        'HOST': tmpPostgres.hostname,
-        'PORT': 5432,
-        'OPTIONS': dict(parse_qsl(tmpPostgres.query)),
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL:
+    tmpPostgres = urlparse(DATABASE_URL)
+    db_name = tmpPostgres.path.lstrip('/') if tmpPostgres.path else 'smart_mcq_db'
+    
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': db_name,
+            'USER': tmpPostgres.username,
+            'PASSWORD': tmpPostgres.password,
+            'HOST': tmpPostgres.hostname,
+            'PORT': tmpPostgres.port or 5432,
+            'OPTIONS': dict(parse_qsl(tmpPostgres.query)) if tmpPostgres.query else {},
+        }
     }
-}
+else:
+    # Fallback database configuration
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'smart_mcq_db',
+            'USER': 'mcq_user',
+            'PASSWORD': 'mcq_secure_password_2024',
+            'HOST': 'localhost',
+            'PORT': '5432',
+        }
+    }
 
 
 # Password validation

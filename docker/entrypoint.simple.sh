@@ -22,6 +22,10 @@ print('Database connected!')
     sleep 2
 done
 
+# Collect static files
+echo "📂 Collecting static files..."
+/app/.venv/bin/python manage.py collectstatic --noinput
+
 # Run migrations
 echo "📦 Running database migrations..."
 /app/.venv/bin/python manage.py migrate --noinput
