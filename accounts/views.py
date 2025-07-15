@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.urls import reverse
 from django.utils import timezone
 from django.db import models
-from .models import Profile, Organization
+from .models import Profile
 from test_sessions.models import TestSession, StudentTestAttempt, TestAttempt, Answer
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -45,16 +45,9 @@ def register_view(request):
         # Create user
         user = User.objects.create_user(username=username, email=email, password=password)
         
-        # Get or create default organization
-        organization, _ = Organization.objects.get_or_create(
-            name='Default Organization',
-            defaults={'is_active': True}
-        )
-        
         # Create profile
         profile = Profile.objects.create(
             user=user,
-            organization=organization,
             role=role,
             is_active=True
         )

@@ -52,7 +52,6 @@ def question_create(request):
             description=request.POST['description'],
             category=request.POST.get('category', ''),
             difficulty=request.POST['difficulty'],
-            organization=request.user.profile.organization,
             created_by=request.user
         )
         
