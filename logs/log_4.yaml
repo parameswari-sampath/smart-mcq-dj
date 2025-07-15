@@ -771,3 +771,86 @@ commands:
       production_deployment: VPS-ready with domain support
       
     status: docker_hub_push_completed_distribution_ready
+
+session_2025_07_15_version_split:
+  date: 2025-07-15
+  session_focus: Split v1.5 into v1.5.1 and v1.5.2 for easier implementation
+  
+  user_request:
+    - Split v1.5 "Basic Question Shuffling + Simple Security Events" into two separate versions
+    - v1.5.1: Focus only on question shuffling functionality
+    - v1.5.2: Focus only on simple security events tracking
+    - Make implementation easier by separating concerns
+  
+  version_roadmap_updates:
+    v1_5_1_basic_question_shuffling:
+      focus: "Essential randomization for academic integrity"
+      features:
+        - Simple question order randomization per test session
+        - Answer choice shuffling per student (A,B,C,D order varies)
+        - Seed-based randomization using student ID + session ID for consistency
+        - Store shuffle state with student attempt for browser refresh consistency
+      implementation:
+        - Add question_order field to TestAttempt (randomized sequence)
+        - Add answer_choice_order field to Answer (shuffled A,B,C,D)
+        - Generate randomized order when test attempt starts
+        - Database migration for new fields
+      notes:
+        - SIMPLE: No complex pooling or algorithms for MVP
+        - CONSISTENT: Same order for student across browser refresh
+        - ACADEMIC INTEGRITY: Prevents simple answer copying
+    
+    v1_5_2_simple_security_events:
+      focus: "Basic security event tracking foundation"
+      features:
+        - Basic event tracking: test start, submit, tab switch detection
+        - Add attempt_type field: 'assessment' vs 'practice'
+        - Simple violation counter in TestAttempt model
+        - Store basic security events with timestamps
+      implementation:
+        - Add attempt_type field to TestSession ('assessment'/'practice')
+        - Add violation_count field to TestAttempt
+        - Basic JavaScript for tab switch detection
+        - Simple event logging without complex analytics
+      notes:
+        - FOUNDATION: Prepares for advanced behavior tracking in v2.x
+        - PRIVACY: Minimal data collection for MVP
+        - SIMPLE: Basic detection without complex analysis
+  
+  version_progression_benefits:
+    separation_of_concerns:
+      - Question shuffling is purely algorithmic/database focused
+      - Security events are JavaScript/frontend focused
+      - Each version can be implemented and tested independently
+      - Reduces complexity and potential conflicts
+    
+    implementation_advantages:
+      - v1.5.1: Database schema changes and randomization logic
+      - v1.5.2: JavaScript event handling and basic tracking
+      - Cleaner testing: randomization tests vs security event tests
+      - Easier debugging and maintenance
+    
+    development_workflow:
+      - Complete v1.5.1 (question shuffling) first
+      - Test randomization thoroughly in isolation
+      - Move to v1.5.2 (security events) as separate feature
+      - Build foundation for future advanced analytics
+  
+  files_modified:
+    - version.yaml (split v1.5 into v1.5.1 and v1.5.2)
+    - logs/current.yaml (updated next_version to v1.5.1)
+    - logs/log_4.yaml (documented version split decision)
+  
+  compliance_verification:
+    version_completion_rules: followed (no changes to completed versions v0.1-v1.4.1)
+    logical_progression: maintained (v1.5.1 → v1.5.2 → v1.6)
+    mvp_focus: preserved (simplified features for each version)
+    tech_stack_compliance: maintained (Django + PostgreSQL + Bootstrap only)
+  
+  next_development_phase:
+    ready_for: "v1.5.1 Basic Question Shuffling"
+    focus: "Question order and answer choice randomization"
+    scope: "Database schema updates and randomization algorithms"
+    foundation: "Academic integrity through simple randomization"
+  
+  status: version_split_completed_ready_for_v1_5_1

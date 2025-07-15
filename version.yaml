@@ -574,40 +574,65 @@ versions:
       - SCALABILITY: Provides foundation for rapid, consistent component development
       - DOCUMENTATION: Creates comprehensive guidelines for design system maintenance
 
-  v1.5: Basic Question Shuffling + Simple Security Events (SIMPLIFIED)
+  v1.5.1: Basic Question Shuffling (SIMPLIFIED)
     questions:
       - How should question order be randomized?
       - Should answer choices be shuffled?
-      - What basic security events should be tracked?
-      - How should test vs practice modes work?
+      - How should randomization affect scoring?
+      - Should there be seed-based randomization?
     answers:
       - Simple question order randomization per test session
       - Answer choice shuffling per student (A,B,C,D order varies)
-      - Basic event tracking: test start, submit, tab switch detection
-      - Add attempt_type field: 'assessment' vs 'practice' (following LMS standards)
-      - Simple violation counter in TestAttempt model
+      - Scoring remains the same, just question order changes
+      - Use student ID + session ID as randomization seed for consistency
     implementation:
       - Add question_order field to TestAttempt (randomized sequence)
       - Add answer_choice_order field to Answer (shuffled A,B,C,D)
-      - Add attempt_type field to TestSession ('assessment'/'practice')
-      - Add violation_count field to TestAttempt
-      - Basic JavaScript for tab switch detection
+      - Generate randomized order when test attempt starts
+      - Store shuffle state with student attempt for consistency
     tests:
       - Question order randomizes differently per session
       - Answer choice order shuffles per student attempt
+      - Same student gets same order on test resume
+      - Scoring works correctly with randomized questions
+      - Basic randomization prevents simple answer copying
+      - Database schema migration adds new fields without breaking existing data
+      - Randomization applies only when enabled per test
+      - Answer validation works with shuffled choices
+    notes:
+      - FOCUS: Essential randomization for academic integrity
+      - SIMPLE: No complex pooling or algorithms for MVP
+      - CONSISTENT: Same order for student across browser refresh
+
+  v1.5.2: Simple Security Events (SIMPLIFIED)
+    questions:
+      - What basic security events should be tracked?
+      - How should test vs practice modes work?
+      - What violation tracking is needed?
+      - How should security data be stored?
+    answers:
+      - Basic event tracking: test start, submit, tab switch detection
+      - Add attempt_type field: 'assessment' vs 'practice' (following LMS standards)
+      - Simple violation counter in TestAttempt model
+      - Store basic security events with timestamps
+    implementation:
+      - Add attempt_type field to TestSession ('assessment'/'practice')
+      - Add violation_count field to TestAttempt
+      - Basic JavaScript for tab switch detection
+      - Simple event logging without complex analytics
+    tests:
       - Tab switch events are detected and logged
       - Assessment vs practice mode saves correctly
       - Violation counter increments on security events
-      - Basic randomization prevents simple answer copying
-      - Enhanced TestAttempt model stores all analytics fields
-      - Teacher results show both violation counts and first-click metrics
-      - Security violation logging includes first-click context
-      - Practice mode flow constraints respect first-click data
-      - Test mode allows navigation regardless of first-click accuracy
-      - Analytics foundation supports future learning efficiency calculations
-      - Database schema migration adds new fields without breaking existing data
-      - AJAX first-click capture works across all browsers
-      - Data integrity maintained between basic scoring and advanced analytics
+      - Security violation logging includes basic context
+      - Event timestamps recorded accurately
+      - JavaScript detection works across browsers
+      - Security data integrity maintained
+      - Basic analytics foundation established
+    notes:
+      - FOUNDATION: Prepares for advanced behavior tracking in v2.x
+      - SIMPLE: Basic detection without complex analysis
+      - PRIVACY: Minimal data collection for MVP
 
   v1.6: Practice Mode Flow Control (SIMPLIFIED)
     questions:
