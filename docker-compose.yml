@@ -5,7 +5,7 @@ services:
   smart-mcq:
     build:
       context: .
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile
     container_name: smart_mcq_production
     ports:
       - "80:80"

@@ -43,13 +43,9 @@ def get_csrf_trusted_origins():
 
 CSRF_TRUSTED_ORIGINS = get_csrf_trusted_origins()
 
-# Disable CSRF for maximum flexibility in local/testing scenarios
-# Production will be secured via domain restrictions
-CSRF_COOKIE_SECURE = False
+# CSRF settings for flexibility
 CSRF_USE_SESSIONS = True
 CSRF_COOKIE_HTTPONLY = False
-
-# Additional CSRF settings for flexibility
 CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
 
 # Database configuration for Docker
