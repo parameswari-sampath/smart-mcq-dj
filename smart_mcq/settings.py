@@ -10,7 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
+from dotenv import load_dotenv
+from urllib.parse import urlparse, parse_qsl
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,10 +30,11 @@ SECRET_KEY = 'django-insecure-l7yg09g&4dx+7ud&@t!m!o-1jnl-z82=6%bv5)40r9dnq$w5es
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["10.164.204.159", "localhost", "29554490a13b.ngrok-free.app"]
+# Dynamic ALLOWED_HOSTS from environment
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
-# CSRF trusted origins for ngrok
-CSRF_TRUSTED_ORIGINS = ["https://29554490a13b.ngrok-free.app"]
+# Dynamic CSRF trusted origins from environment
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000').split(',')
 
 # Application definition
 
@@ -79,14 +85,18 @@ WSGI_APPLICATION = 'smart_mcq.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Database configuration using Neon DB
+tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'smart_mcq_db',
-        'USER': 'mcq_user',
-        'PASSWORD': 'mcq_secure_password_2024',
-        'HOST': 'localhost',
-        'PORT': '5433',
+        'NAME': tmpPostgres.path.replace('/', ''),
+        'USER': tmpPostgres.username,
+        'PASSWORD': tmpPostgres.password,
+        'HOST': tmpPostgres.hostname,
+        'PORT': 5432,
+        'OPTIONS': dict(parse_qsl(tmpPostgres.query)),
     }
 }
 

@@ -24,7 +24,7 @@ def home_redirect(request):
     return redirect('login')
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    # path('admin/', admin.site.urls),  # Disabled admin access
     path('accounts/', include('accounts.urls')),
     path('questions/', include('questions.urls')),
     path('tests/', include('tests.urls')),
