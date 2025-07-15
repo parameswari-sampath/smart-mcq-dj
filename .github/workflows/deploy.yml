@@ -1,0 +1,50 @@
+name: 🚀 Deploy Smart MCQ Platform
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  deploy:
+    name: 🏗️ Build and Deploy
+    runs-on: self-hosted
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 🔧 Make Deploy Script Executable
+        run: chmod +x build-and-deploy.sh
+      
+      - name: 🚀 Run Build and Deploy Script
+        run: |
+          echo "🚀 Running build-and-deploy.sh script..."
+          echo "📅 Started at: $(date)"
+          echo "📝 Commit: ${{ github.sha }}"
+          echo "👤 Triggered by: ${{ github.actor }}"
+          echo "----------------------------------------"
+          ./build-and-deploy.sh
+      
+      - name: 🔔 Deployment Success Notification
+        run: |
+          echo "----------------------------------------"
+          echo "🎉 Deployment completed successfully!"
+          echo "📅 Deployed at: $(date)"
+          echo "📝 Commit: ${{ github.sha }}"
+          echo "👤 Triggered by: ${{ github.actor }}"
+          echo "🌐 Application should be available at: http://localhost/"
+          echo "🔑 Admin login: admin / admin123"
+        if: success()
+      
+      - name: ❌ Deployment Failure Notification
+        run: |
+          echo "----------------------------------------"
+          echo "💥 Deployment failed!"
+          echo "📅 Failed at: $(date)"
+          echo "📝 Commit: ${{ github.sha }}"
+          echo "👤 Triggered by: ${{ github.actor }}"
+          echo "🔍 Check the build-and-deploy.sh script output above for details"
+        if: failure()
