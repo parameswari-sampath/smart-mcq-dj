@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}Preview CSV Import - Smart MCQ{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-eye me-2"></i>Preview CSV Import</h4>
+                <p class="text-muted mb-0">Review {{ total_count }} question(s) before importing</p>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Note:</strong> Questions with duplicate titles will be skipped during import.
+                </div>
+
+                <div class="table-responsive" style="max-height: 400px;">
+                    <table class="table table-striped table-sm">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                <th width="5%">#</th>
+                                <th width="25%">Title</th>
+                                <th width="20%">Description</th>
+                                <th width="15%">Choices</th>
+                                <th width="10%">Correct</th>
+                                <th width="10%">Category</th>
+                                <th width="10%">Difficulty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for question in questions %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <strong>{{ question.title|truncatechars:50 }}</strong>
+                                </td>
+                                <td>{{ question.description|truncatechars:40 }}</td>
+                                <td>
+                                    <small>
+                                        A: {{ question.choice_a|truncatechars:20 }}<br>
+                                        B: {{ question.choice_b|truncatechars:20 }}<br>
+                                        C: {{ question.choice_c|truncatechars:20 }}<br>
+                                        D: {{ question.choice_d|truncatechars:20 }}
+                                    </small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success">{{ question.correct_answer|upper }}</span>
+                                </td>
+                                <td>
+                                    {% if question.category %}
+                                        <span class="badge bg-secondary">{{ question.category }}</span>
+                                    {% else %}
+                                        <span class="text-muted">No category</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if question.difficulty == 'easy' %}bg-success
+                                        {% elif question.difficulty == 'medium' %}bg-warning
+                                        {% else %}bg-danger{% endif %}">
+                                        {{ question.difficulty|title }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                        <strong>Total Questions to Import: {{ total_count }}</strong>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'bulk_operations:csv_import' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Upload
+                        </a>
+                        <form method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success" onclick="return confirm('Are you sure you want to import {{ total_count }} questions?')">
+                                <i class="fas fa-check me-2"></i>Confirm Import
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -7,7 +7,12 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2>Question Bank</h2>
-            <a href="{% url 'questions:question_create' %}" class="btn btn-primary">Add New Question</a>
+            <div class="d-flex gap-2">
+                <a href="{% url 'bulk_operations:csv_import' %}" class="btn btn-outline-success">
+                    <i class="fas fa-upload me-2"></i>Import CSV
+                </a>
+                <a href="{% url 'questions:question_create' %}" class="btn btn-primary">Add New Question</a>
+            </div>
         </div>
     </div>
 </div>
@@ -55,6 +60,7 @@
                                     <td>{{ question.created_at|date:"M d, Y" }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'questions:question_detail' question.pk %}" class="btn btn-outline-info">View</a>
                                             <a href="{% url 'questions:question_edit' question.pk %}" class="btn btn-outline-primary">Edit</a>
                                             <a href="{% url 'questions:question_delete' question.pk %}" class="btn btn-outline-danger">Delete</a>
                                         </div>

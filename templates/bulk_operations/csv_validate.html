@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+
+{% block title %}Validate CSV Import - Smart MCQ{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-check-circle me-2"></i>CSV Validation Results</h4>
+                <p class="text-muted mb-0">
+                    Total: {{ total_count }} questions | 
+                    <span class="text-success">Valid: {{ valid_count }}</span> | 
+                    <span class="text-danger">Errors: {{ error_count }}</span>
+                </p>
+            </div>
+            <div class="card-body">
+                {% if has_errors %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Validation Issues Found:</strong> {{ error_count }} row(s) have errors. 
+                        Please review the highlighted rows below. You can proceed to import only the valid questions.
+                    </div>
+                {% else %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>All Good!</strong> All {{ total_count }} questions passed validation.
+                    </div>
+                {% endif %}
+
+                <div class="table-responsive" style="max-height: 500px;">
+                    <table class="table table-striped table-sm">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                <th width="5%">Line</th>
+                                <th width="20%">Title</th>
+                                <th width="15%">Description</th>
+                                <th width="25%">Choices</th>
+                                <th width="8%">Correct</th>
+                                <th width="10%">Category</th>
+                                <th width="8%">Difficulty</th>
+                                <th width="9%">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in validation_data %}
+                            <tr class="{% if row.has_errors %}table-danger{% else %}table-success{% endif %}">
+                                <td>{{ row.line_number }}</td>
+                                <td>
+                                    {% if row.title %}
+                                        <strong>{{ row.title|truncatechars:30 }}</strong>
+                                    {% else %}
+                                        <span class="text-muted">Missing</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if row.description %}
+                                        {{ row.description|truncatechars:25 }}
+                                    {% else %}
+                                        <span class="text-muted">Missing</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>
+                                        A: {{ row.choice_a|default:"Missing"|truncatechars:15 }}<br>
+                                        B: {{ row.choice_b|default:"Missing"|truncatechars:15 }}<br>
+                                        C: {{ row.choice_c|default:"Missing"|truncatechars:15 }}<br>
+                                        D: {{ row.choice_d|default:"Missing"|truncatechars:15 }}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if row.correct_answer %}
+                                        <span class="badge bg-info">{{ row.correct_answer|upper }}</span>
+                                    {% else %}
+                                        <span class="text-muted">Missing</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if row.category %}
+                                        <span class="badge bg-secondary">{{ row.category|truncatechars:10 }}</span>
+                                    {% else %}
+                                        <span class="text-muted">None</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if row.difficulty %}
+                                        <span class="badge 
+                                            {% if row.difficulty == 'easy' %}bg-success
+                                            {% elif row.difficulty == 'medium' %}bg-warning
+                                            {% elif row.difficulty == 'hard' %}bg-danger
+                                            {% else %}bg-dark{% endif %}">
+                                            {{ row.difficulty|title }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">None</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if row.has_errors %}
+                                        <i class="fas fa-times-circle text-danger" 
+                                           data-bs-toggle="tooltip" 
+                                           title="{% for error in row.errors %}{{ error }}{% if not forloop.last %} | {% endif %}{% endfor %}"></i>
+                                    {% else %}
+                                        <i class="fas fa-check-circle text-success"></i>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if row.has_errors %}
+                            <tr class="table-danger">
+                                <td></td>
+                                <td colspan="7">
+                                    <small class="text-danger">
+                                        <strong>Errors:</strong>
+                                        {% for error in row.errors %}
+                                            {{ error }}{% if not forloop.last %} | {% endif %}
+                                        {% endfor %}
+                                    </small>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div>
+                        {% if has_errors %}
+                            <strong class="text-warning">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                {{ valid_count }} valid questions will be imported
+                            </strong>
+                        {% else %}
+                            <strong class="text-success">
+                                <i class="fas fa-check-circle me-1"></i>
+                                All {{ total_count }} questions are valid
+                            </strong>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'bulk_operations:csv_import' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Upload
+                        </a>
+                        {% if valid_count > 0 %}
+                            <form method="post" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-arrow-right me-2"></i>
+                                    Proceed with {{ valid_count }} Question{{ valid_count|pluralize }}
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize tooltips
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl)
+})
+</script>
+{% endblock %}

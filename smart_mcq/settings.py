@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'questions',
     'tests',
     'test_sessions',
+    'bulk_operations',
 ]
 
 MIDDLEWARE = [

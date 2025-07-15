@@ -609,12 +609,20 @@ versions:
       - Import success shows count of questions created
       - Teacher can only import to their own organization
       - Invalid CSV format shows helpful error messages
+    deliverables:
+      - bulk_operations Django app with CSV import functionality
+      - Interactive validation table with error highlighting (red rows for errors)
+      - Comprehensive validation workflow (Upload → Validate → Preview → Import)
+      - Teacher dashboard integration with Import CSV button
+      - Enhanced import feedback showing created/rejected counts
+      - Sample CSV files for testing validation
     notes:
       - PRODUCTIVITY: Addresses teacher workflow efficiency from v0.3 limitation
       - SIMPLE FORMAT: Basic CSV without complex nested data
       - ERROR HANDLING: Clear feedback for troubleshooting import issues
       - BATCH OPERATION: Improves efficiency over manual question entry
       - FOUNDATION: Prepares for advanced bulk operations in v3.11
+    status: COMPLETED
 
   v1.5.1: Basic Question Shuffling (SIMPLIFIED)
     questions:

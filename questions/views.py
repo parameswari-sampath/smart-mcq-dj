@@ -84,6 +84,23 @@ def question_create(request):
 
 
 @teacher_required
+def question_detail(request, pk):
+    """View question details"""
+    question = get_object_or_404(
+        Question, 
+        pk=pk, 
+        created_by=request.user,
+        is_active=True
+    )
+    
+    context = {
+        'question': question,
+        'choices': question.choices.all().order_by('label')
+    }
+    return render(request, 'questions/question_detail.html', context)
+
+
+@teacher_required
 def question_edit(request, pk):
     """Edit an existing question"""
     question = get_object_or_404(

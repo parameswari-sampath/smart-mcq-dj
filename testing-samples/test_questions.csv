@@ -1,0 +1,6 @@
+title,description,choice_a,choice_b,choice_c,choice_d,correct_answer,category,difficulty
+What is the capital of France?,Choose the correct capital city of France.,London,Paris,Berlin,Madrid,B,Geography,easy
+Which programming language is known for web development?,Select the language primarily used for web development.,Python,JavaScript,C++,Java,B,Programming,medium
+What is 2 + 2?,Basic arithmetic calculation.,3,4,5,6,B,Mathematics,easy
+What is the largest planet in our solar system?,Identify the largest planet.,Earth,Mars,Jupiter,Saturn,C,Science,medium
+Who wrote Romeo and Juliet?,Identify the author of this famous play.,Charles Dickens,William Shakespeare,Jane Austen,Mark Twain,B,Literature,hard

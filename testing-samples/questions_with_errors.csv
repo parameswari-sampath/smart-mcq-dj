@@ -1,0 +1,8 @@
+title,description,choice_a,choice_b,choice_c,choice_d,correct_answer,category,difficulty
+What is the capital of France?,Choose the correct capital city of France.,London,Paris,Berlin,Madrid,B,Geography,easy
+,Missing title question here,London,Paris,Berlin,Madrid,B,Geography,medium
+Which programming language is web dev?,Select the language.,Python,JavaScript,,Java,B,Programming,medium
+What is 2 + 2?,Basic arithmetic calculation.,3,4,5,6,X,Mathematics,easy
+What is the largest planet?,Identify the largest planet.,Earth,Mars,Jupiter,Saturn,C,Science,invalid_difficulty
+Who wrote Romeo and Juliet?,,Charles Dickens,William Shakespeare,Jane Austen,Mark Twain,B,Literature,hard
+This is a very long title that exceeds the maximum allowed length of 500 characters for a question title and should trigger a validation error when we try to import this CSV file because the system has a limit on the title field length and this title is definitely going to be longer than 500 characters so it should be caught by our validation system and reported as an error to the user with the specific line number where this error occurs so they can fix it before trying to import again which is exactly what we want to test,Valid description here,Choice A,Choice B,Choice C,Choice D,A,Testing,easy

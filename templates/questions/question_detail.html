@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}Question Details - Smart MCQ{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Question Details</h2>
+            <div class="d-flex gap-2">
+                <a href="{% url 'questions:question_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to List
+                </a>
+                <a href="{% url 'questions:question_edit' question.pk %}" class="btn btn-primary">
+                    <i class="fas fa-edit me-2"></i>Edit
+                </a>
+                <a href="{% url 'questions:question_delete' question.pk %}" class="btn btn-outline-danger">
+                    <i class="fas fa-trash me-2"></i>Delete
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h4 class="mb-2">{{ question.title }}</h4>
+                        <div class="d-flex gap-2">
+                            {% if question.category %}
+                                <span class="badge bg-secondary">{{ question.category }}</span>
+                            {% endif %}
+                            <span class="badge 
+                                {% if question.difficulty == 'easy' %}bg-success
+                                {% elif question.difficulty == 'medium' %}bg-warning
+                                {% else %}bg-danger{% endif %}">
+                                {{ question.get_difficulty_display }}
+                            </span>
+                        </div>
+                    </div>
+                    <small class="text-muted">Created: {{ question.created_at|date:"M d, Y H:i" }}</small>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Question Image -->
+                {% if question.image %}
+                <div class="mb-4">
+                    <img src="{{ question.image.url }}" alt="Question Image" class="img-fluid rounded" style="max-height: 300px;">
+                </div>
+                {% endif %}
+
+                <!-- Question Description -->
+                <div class="mb-4">
+                    <h5>Description</h5>
+                    <p class="text-muted">{{ question.description|linebreaks }}</p>
+                </div>
+
+                <!-- Answer Choices -->
+                <div class="mb-4">
+                    <h5>Answer Choices</h5>
+                    <div class="row">
+                        {% for choice in choices %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card {% if choice.is_correct %}border-success bg-light{% endif %}">
+                                <div class="card-body py-2">
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge {% if choice.is_correct %}bg-success{% else %}bg-secondary{% endif %} me-2">
+                                            {{ choice.label }}
+                                        </span>
+                                        <span>{{ choice.text }}</span>
+                                        {% if choice.is_correct %}
+                                            <i class="fas fa-check-circle text-success ms-auto"></i>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Additional Information -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <small class="text-muted">
+                            <strong>Created by:</strong> {{ question.created_by.get_full_name|default:question.created_by.username }}
+                        </small>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <small class="text-muted">
+                            <strong>Organization:</strong> {{ question.organization.name }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
