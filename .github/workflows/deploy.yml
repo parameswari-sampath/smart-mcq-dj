@@ -19,6 +19,11 @@ jobs:
       - name: 🔧 Make Deploy Script Executable
         run: chmod +x build-and-deploy.sh
       
+      - name: 📝 Create Environment File
+        run: |
+          echo "📝 Creating .env file for deployment..."
+          cp /root/smart-mcq/smart-mcq-dj/.env ./.env || echo "Warning: Could not copy .env file from production location"
+      
       - name: 🚀 Run Build and Deploy Script
         run: |
           echo "🚀 Running build-and-deploy.sh script..."
