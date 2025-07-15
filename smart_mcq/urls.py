@@ -30,5 +30,6 @@ urlpatterns = [
     path('tests/', include('tests.urls')),
     path('test-sessions/', include('test_sessions.urls')),
     path('bulk/', include('bulk_operations.urls')),
+    path('status/', include('server_status.urls')),
     path('', home_redirect, name='home'),
 ]

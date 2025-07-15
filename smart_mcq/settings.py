@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'tests',
     'test_sessions',
     'bulk_operations',
+    'server_status',
 ]
 
 MIDDLEWARE = [

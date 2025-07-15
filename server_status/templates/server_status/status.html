@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Status - Smart MCQ Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            {% if status_ok %}
+            background: #4CAF50;
+            {% else %}
+            background: #f44336;
+            {% endif %}
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #4facfe;
+        }
+        
+        .stat-card h3 {
+            color: #4facfe;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+        
+        .stat-label {
+            font-weight: 500;
+            color: #6c757d;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-good { background: #28a745; }
+        .progress-warning { background: #ffc107; }
+        .progress-danger { background: #dc3545; }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: transform 0.2s ease;
+            margin: 20px 0;
+        }
+        
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .timestamp {
+            text-align: center;
+            color: #6c757d;
+            margin-top: 20px;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🖥️ Server Status</h1>
+            <p>Smart MCQ Platform - System Monitoring</p>
+            <div class="status-indicator">
+                {% if status_ok %}
+                    ✅ All Systems Operational
+                {% else %}
+                    ⚠️ Issues Detected
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="content">
+            {% if error %}
+                <div class="error-message">
+                    <strong>Error:</strong> {{ error }}
+                </div>
+            {% else %}
+                <div class="stats-grid">
+                    <!-- System Information -->
+                    <div class="stat-card">
+                        <h3>🖥️ System Information</h3>
+                        {% if system_info %}
+                            <div class="stat-item">
+                                <span class="stat-label">Hostname</span>
+                                <span class="stat-value">{{ system_info.hostname }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Platform</span>
+                                <span class="stat-value">{{ system_info.platform }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Python Version</span>
+                                <span class="stat-value">{{ system_info.python_version }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Architecture</span>
+                                <span class="stat-value">{{ system_info.architecture }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Resource Usage -->
+                    <div class="stat-card">
+                        <h3>📊 Resource Usage</h3>
+                        {% if resources %}
+                            <div class="stat-item">
+                                <span class="stat-label">CPU Usage</span>
+                                <span class="stat-value">{{ resources.cpu_percent }}%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill {% if resources.cpu_percent > 80 %}progress-danger{% elif resources.cpu_percent > 60 %}progress-warning{% else %}progress-good{% endif %}" 
+                                     style="width: {{ resources.cpu_percent }}%"></div>
+                            </div>
+                            
+                            <div class="stat-item">
+                                <span class="stat-label">Memory Usage</span>
+                                <span class="stat-value">{{ resources.memory_used }}GB / {{ resources.memory_total }}GB ({{ resources.memory_percent }}%)</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill {% if resources.memory_percent > 80 %}progress-danger{% elif resources.memory_percent > 60 %}progress-warning{% else %}progress-good{% endif %}" 
+                                     style="width: {{ resources.memory_percent }}%"></div>
+                            </div>
+                            
+                            <div class="stat-item">
+                                <span class="stat-label">Disk Usage</span>
+                                <span class="stat-value">{{ resources.disk_used }}GB / {{ resources.disk_total }}GB ({{ resources.disk_percent }}%)</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill {% if resources.disk_percent > 80 %}progress-danger{% elif resources.disk_percent > 60 %}progress-warning{% else %}progress-good{% endif %}" 
+                                     style="width: {{ resources.disk_percent }}%"></div>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Database Status -->
+                    <div class="stat-card">
+                        <h3>🗄️ Database Status</h3>
+                        <div class="stat-item">
+                            <span class="stat-label">Connection</span>
+                            <span class="stat-value" style="color: {% if db_status == 'Connected' %}#28a745{% else %}#dc3545{% endif %}">
+                                {{ db_status }}
+                            </span>
+                        </div>
+                        {% if db_error %}
+                            <div class="error-message">
+                                {{ db_error }}
+                            </div>
+                        {% endif %}
+                        {% if app_info %}
+                            <div class="stat-item">
+                                <span class="stat-label">Database Engine</span>
+                                <span class="stat-value">{{ app_info.database_engine }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Application Info -->
+                    <div class="stat-card">
+                        <h3>🚀 Application Info</h3>
+                        {% if app_info %}
+                            <div class="stat-item">
+                                <span class="stat-label">Debug Mode</span>
+                                <span class="stat-value" style="color: {% if app_info.debug_mode %}#ffc107{% else %}#28a745{% endif %}">
+                                    {% if app_info.debug_mode %}ON{% else %}OFF{% endif %}
+                                </span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Time Zone</span>
+                                <span class="stat-value">{{ app_info.time_zone }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Secret Key</span>
+                                <span class="stat-value" style="color: {% if app_info.secret_key_set %}#28a745{% else %}#dc3545{% endif %}">
+                                    {% if app_info.secret_key_set %}Configured{% else %}Not Set{% endif %}
+                                </span>
+                            </div>
+                        {% endif %}
+                        {% if uptime %}
+                            <div class="stat-item">
+                                <span class="stat-label">System Uptime</span>
+                                <span class="stat-value">{{ uptime }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Environment Variables -->
+                    <div class="stat-card">
+                        <h3>🔧 Environment</h3>
+                        {% if env_vars %}
+                            {% for key, value in env_vars.items %}
+                                <div class="stat-item">
+                                    <span class="stat-label">{{ key }}</span>
+                                    <span class="stat-value" style="color: {% if value == 'Set' %}#28a745{% elif value == 'Not Set' %}#dc3545{% else %}#6c757d{% endif %}">
+                                        {{ value }}
+                                    </span>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+            
+            <div style="text-align: center;">
+                <button class="refresh-btn" onclick="window.location.reload()">
+                    🔄 Refresh Status
+                </button>
+            </div>
+            
+            <div class="timestamp">
+                Last updated: {{ current_time }}
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-refresh every 30 seconds
+        setTimeout(() => {
+            window.location.reload();
+        }, 30000);
+    </script>
+</body>
+</html>
