@@ -75,6 +75,25 @@ def session_create(request):
                 messages.error(request, f'Start time must be in the future. Please select a future date and time in your timezone ({user_timezone}).')
                 return redirect('test_sessions:session_create')
             
+            # INDUSTRY STANDARD: Prevent duplicate sessions (double-click protection)
+            # Check for existing session with same test, teacher, and start time (within 1 minute)
+            time_tolerance = timezone.timedelta(minutes=1)
+            existing_session = TestSession.objects.filter(
+                test=test,
+                created_by=request.user,
+                start_time__range=(
+                    start_datetime_utc - time_tolerance,
+                    start_datetime_utc + time_tolerance
+                ),
+                is_active=True
+            ).first()
+            
+            if existing_session:
+                messages.warning(request, 
+                    f'A similar session already exists for this test at {start_local_str}. '
+                    f'Access code: {existing_session.access_code}')
+                return redirect('test_sessions:session_detail', pk=existing_session.pk)
+            
             session = TestSession.objects.create(
                 test=test,
                 session_name=request.POST.get('session_name', '').strip(),

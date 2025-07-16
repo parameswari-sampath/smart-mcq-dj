@@ -1,0 +1,101 @@
+session_2025_07_16_timezone_fix:
+  date: 2025-07-16
+  prompt_id: timezone_scheduling_issue_resolution
+  session_focus: Critical timezone conversion fix for test session scheduling
+  
+  user_requests:
+    - Fix critical timezone issue where India users scheduling 9:40 AM were getting 3:10 PM UTC
+    - Implement industry-standard timezone handling for global deployment
+    - Add user timezone detection and proper conversion logic
+    - Ensure accurate scheduling for users worldwide
+  
+  issue_analysis:
+    problem_identified:
+      - India user (UTC+5:30) scheduling 9:40 AM was storing as 3:10 PM UTC (adding 5:30 hours)
+      - Should store as 4:10 AM UTC (subtracting 5:30 hours)
+      - Root cause: Server timezone was UTC, treating user input as UTC then adding offset again
+      - Double conversion error in timezone.make_aware() function
+    
+    industry_research:
+      - Google Calendar: User timezone detection + UTC storage
+      - Zoom: Local input with automatic timezone conversion  
+      - Microsoft Teams: Timezone-aware scheduling
+      - Canvas LMS: Multi-timezone support for global education
+  
+  implementation_completed:
+    frontend_changes:
+      - Added automatic timezone detection using Intl.DateTimeFormat API
+      - Added hidden user_timezone field to session forms
+      - Added visual timezone feedback for user transparency
+      - Enhanced session_form.html with timezone display
+    
+    backend_changes:
+      - Added pytz library to requirements.txt for proper timezone handling
+      - Updated test_sessions/views.py with industry-standard conversion logic
+      - Implemented 4-step process: Parse → Localize → Convert → Store UTC
+      - Added proper error handling for invalid timezones with UTC fallback
+      - Enhanced success messages showing both local and UTC times
+    
+    conversion_logic:
+      step_1: "Parse naive datetime from user input"
+      step_2: "Get user's timezone from frontend detection"  
+      step_3: "Localize to user's timezone (key fix!)"
+      step_4: "Convert to UTC for database storage"
+  
+  real_world_examples:
+    india_user:
+      input: "9:40 AM (datetime-local)"
+      timezone: "Asia/Kolkata (UTC+5:30)"
+      process: "9:40 AM naive → 9:40 AM IST → 4:10 AM UTC"
+      result: "✅ CORRECT: 9:40 AM IST = 4:10 AM UTC"
+    
+    usa_user:
+      input: "9:40 AM (datetime-local)"
+      timezone: "America/New_York (UTC-5:00)"
+      process: "9:40 AM naive → 9:40 AM EST → 2:40 PM UTC"
+      result: "✅ CORRECT: 9:40 AM EST = 2:40 PM UTC"
+  
+  files_modified:
+    - requirements.txt (added pytz==2024.1)
+    - templates/test_sessions/session_form.html (timezone detection and UI)
+    - test_sessions/views.py (proper timezone conversion logic)
+    - TIMEZONE_FIX_IMPLEMENTATION.md (comprehensive documentation)
+  
+  testing_guide:
+    manual_verification:
+      - India test: Schedule 2:00 PM IST → Should store 8:30 AM UTC
+      - USA test: Schedule 2:00 PM EST → Should store 7:00 PM UTC  
+      - UK test: Schedule 2:00 PM GMT → Should store 2:00 PM UTC
+  
+  status: completed
+  prompt_status: completed
+
+session_2025_07_16_logging_update:
+  date: 2025-07-16
+  prompt_id: follow_logging_rules_compliance
+  session_focus: Update logging according to rules.yaml requirements
+  
+  user_requests:
+    - Follow rules.yaml logging requirements properly
+    - Update logs with timezone fix implementation details
+    - Create new log file due to 500 line limit exceeded
+  
+  actions_taken:
+    - Checked log_5.yaml length: 544 lines (exceeded 500 line limit)
+    - Created log_6.yaml as new log file per rules.yaml file_rotation guidelines
+    - Moved timezone fix entry to new log file
+    - Following format requirements: prompt_id, user requests, actions taken, files modified, status
+  
+  files_modified:
+    - logs/log_5.yaml (removed timezone entry, kept under 500 lines)
+    - logs/log_6.yaml (created new log file with timezone fix entry)
+  
+  compliance_notes:
+    - Following rules.yaml section 70-98 logging requirements
+    - Log file rotation when exceeding 500 lines
+    - Proper prompt entry format with date and prompt_id
+    - Clear documentation of user requests and actions taken
+    - File modification tracking as required
+  
+  status: completed
+  prompt_status: completed

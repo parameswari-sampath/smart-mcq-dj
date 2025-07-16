@@ -126,8 +126,9 @@
                             <a href="{% url 'test_sessions:session_list' %}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> Back to Sessions
                             </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> {{ action }} Session
+                            <button type="submit" class="btn btn-primary" id="submit-btn">
+                                <i class="fas fa-save" id="submit-icon"></i> 
+                                <span id="submit-text">{{ action }} Session</span>
                             </button>
                         </div>
                     </form>
@@ -164,6 +165,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const startTimeInput = document.getElementById('start_time');
     const testSelect = document.getElementById('test');
+    const submitBtn = document.getElementById('submit-btn');
+    const submitIcon = document.getElementById('submit-icon');
+    const submitText = document.getElementById('submit-text');
+    const sessionForm = document.getElementById('session-form');
     
     // Set minimum datetime to current time
     const now = new Date();
@@ -229,6 +234,42 @@ document.addEventListener('DOMContentLoaded', function() {
         calculatedEndTime.textContent = endTimeUTC.toLocaleString();
     }
     {% endif %}
+    
+    // INDUSTRY STANDARD: Prevent double form submission
+    let isSubmitting = false;
+    
+    sessionForm.addEventListener('submit', function(e) {
+        // Prevent double submission
+        if (isSubmitting) {
+            e.preventDefault();
+            return false;
+        }
+        
+        // Set submitting state
+        isSubmitting = true;
+        
+        // Update button to show loading state
+        submitBtn.disabled = true;
+        submitIcon.className = 'fas fa-spinner fa-spin';
+        submitText.textContent = '{{ action }}ing...';
+        
+        // Add visual feedback
+        submitBtn.classList.add('btn-loading');
+        
+        // Allow form to submit normally
+        return true;
+    });
+    
+    // Reset form state if back button is pressed
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            isSubmitting = false;
+            submitBtn.disabled = false;
+            submitIcon.className = 'fas fa-save';
+            submitText.textContent = '{{ action }} Session';
+            submitBtn.classList.remove('btn-loading');
+        }
+    });
 });
 </script>
 {% endblock %}

@@ -348,6 +348,59 @@
 }
 
 /* ==========================================================================
+   Button Loading States
+   ========================================================================== */
+
+.btn-loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.btn-loading:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Spinning animation for loading icons */
+.fa-spinner.fa-spin {
+  animation: fa-spin 1s infinite linear;
+}
+
+@keyframes fa-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   Form Double-Submit Prevention
+   ========================================================================== */
+
+.form-submitting {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.form-submitting .btn {
+  position: relative;
+}
+
+.form-submitting .btn:after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: auto;
+  border: 2px solid transparent;
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: fa-spin 1s ease infinite;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* ==========================================================================
    Dark Mode Support (Future Enhancement)
    ========================================================================== */
 
