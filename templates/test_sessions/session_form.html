@@ -11,8 +11,11 @@
                     <h4 class="mb-0">{{ action }} Test Session</h4>
                 </div>
                 <div class="card-body">
-                    <form method="post">
+                    <form method="post" id="session-form">
                         {% csrf_token %}
+                        
+                        <!-- Hidden field for user timezone -->
+                        <input type="hidden" id="user_timezone" name="user_timezone" value="">
                         
                         {% if action == 'Create' %}
                         <div class="mb-3">
@@ -97,6 +100,9 @@
                                 {% if action == 'Create' %}
                                 The session will automatically end after the test duration.
                                 {% endif %}
+                                <br><small class="text-muted">
+                                    <i class="fas fa-globe"></i> Your timezone: <span id="user-timezone-display">Detecting...</span>
+                                </small>
                             </div>
                         </div>
 
@@ -151,6 +157,11 @@
 <script>
 // Real-time end time calculation for create form
 document.addEventListener('DOMContentLoaded', function() {
+    // INDUSTRY STANDARD: Detect and set user timezone
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    document.getElementById('user_timezone').value = userTimezone;
+    document.getElementById('user-timezone-display').textContent = userTimezone;
+    
     const startTimeInput = document.getElementById('start_time');
     const testSelect = document.getElementById('test');
     
