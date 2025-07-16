@@ -233,6 +233,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let warningShown1min = timerState.warningShown1min || false;
     let testSubmitted = timerState.testSubmitted || false;
     
+    // Auto-submit attempt tracking for exponential backoff
+    let autoSubmitAttempts = 0;
+    const maxAutoSubmitAttempts = 3;
+    let timerInterval = null;
+    
     // Track pending save operations to prevent race conditions
     let pendingSaves = 0;
     let currentAnsweredCount = {{ answered_questions_count }};
@@ -342,6 +347,34 @@ document.addEventListener('DOMContentLoaded', function() {
         return cookieValue;
     }
     
+    // CSRF token refresh for long-running test sessions
+    async function getValidCSRFToken() {
+        try {
+            // Try to get a fresh CSRF token
+            const response = await fetch('{% url "save_answer" test_attempt.id %}', {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            
+            if (response.ok) {
+                // If the request succeeds, the current token is still valid
+                return getCookie('csrftoken');
+            } else if (response.status === 403) {
+                // CSRF token is stale, try to refresh the page silently to get new token
+                console.warn('CSRF token expired, attempting to refresh...');
+                window.location.reload();
+                return null;
+            }
+        } catch (error) {
+            console.warn('CSRF token validation failed:', error);
+        }
+        
+        // Fallback to current token
+        return getCookie('csrftoken');
+    }
+    
     // v1.5.2: Display-only timer (server controls actual auto-submit)
     function updateTimer() {
         if (testSubmitted) return;
@@ -434,82 +467,174 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 5000);
     }
     
-    function autoSubmitTest() {
+    async function autoSubmitTest() {
+        // Prevent multiple simultaneous auto-submit attempts
         if (testSubmitted) return;
         
-        console.log('🚀 v1.5.2 Auto-submit triggered - Server will validate timing');
+        // Check attempt limit for exponential backoff
+        if (autoSubmitAttempts >= maxAutoSubmitAttempts) {
+            console.error('Max auto-submit attempts reached. Enabling manual submission.');
+            showWarningAlert('Auto-submit failed multiple times. Please submit manually.', 'danger');
+            enableManualSubmission();
+            return;
+        }
+        
+        // CRITICAL FIX: Always clear timer interval first to prevent multiple triggers
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
         
         testSubmitted = true;
+        autoSubmitAttempts++;
+        
+        console.log(`🚀 Auto-submit attempt ${autoSubmitAttempts}/${maxAutoSubmitAttempts} - Server will validate timing`);
+        
         saveTimerState();
         timerText.textContent = '00:00';
         timerDisplay.classList.add('danger');
         
         // Show auto-submit message
-        showWarningAlert('Time is up! Auto-submitting test...', 'danger');
+        showWarningAlert(`Auto-submitting test... (Attempt ${autoSubmitAttempts})`, 'danger');
         
         // Disable all form elements to prevent further interaction
         const allInputs = document.querySelectorAll('input, button');
         allInputs.forEach(input => input.disabled = true);
         
-        // Clear timer state from localStorage
-        localStorage.removeItem(timerKey);
-        
-        // Immediate auto-submit attempt (server will validate if time actually expired)
-        fetch(`{% url 'submit_test' test_attempt.id %}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-                auto_submit: true,
-                client_timestamp: new Date().toISOString(),
-                trigger_source: 'client_timer_v1.5.2'
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('v1.5.2 Auto-submit response:', data);
+        try {
+            // Get fresh CSRF token for long-running sessions
+            const csrfToken = await getValidCSRFToken();
+            
+            if (!csrfToken) {
+                // CSRF refresh triggered page reload
+                return;
+            }
+            
+            // Calculate exponential backoff delay for retry attempts
+            const retryDelay = autoSubmitAttempts > 1 ? Math.pow(2, autoSubmitAttempts - 1) * 1000 : 0;
+            
+            if (retryDelay > 0) {
+                console.log(`Waiting ${retryDelay}ms before retry...`);
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+            }
+            
+            // Auto-submit attempt with fresh token
+            const response = await fetch(`{% url 'submit_test' test_attempt.id %}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    auto_submit: true,
+                    client_timestamp: new Date().toISOString(),
+                    trigger_source: `client_timer_v1.5.2_attempt_${autoSubmitAttempts}`,
+                    attempt_number: autoSubmitAttempts
+                })
+            });
+            
+            const data = await response.json();
+            console.log('Auto-submit response:', data);
             
             if (data.success) {
                 // Server validated and accepted auto-submit
                 console.log('✅ Server validated auto-submit successful');
+                localStorage.removeItem(timerKey); // Clear timer state on success
                 window.location.href = data.redirect_url || '{% url "dashboard" %}';
+                return;
             } else {
-                // Server rejected auto-submit (timing validation failed)
+                // Server rejected auto-submit
                 console.warn('⚠️ Server rejected auto-submit:', data.error);
                 
                 if (data.remaining_seconds && data.remaining_seconds > 0) {
-                    // Time hasn't actually expired yet - server prevented premature submission
-                    showWarningAlert(`Server validation: ${data.remaining_seconds}s remaining. Timer will retry.`, 'warning');
+                    // Time hasn't actually expired yet - restart timer with server time
+                    console.log(`Server says ${data.remaining_seconds}s remaining. Restarting timer.`);
+                    showWarningAlert(`Server validation: ${data.remaining_seconds}s remaining. Restarting timer.`, 'warning');
                     
-                    // Re-enable inputs and continue timer
-                    allInputs.forEach(input => input.disabled = false);
-                    testSubmitted = false;
-                    
-                    // Update server remaining time for accuracy
+                    // CRITICAL FIX: Don't reset testSubmitted here - restart timer properly
                     serverRemainingSeconds = data.remaining_seconds;
+                    autoSubmitAttempts = 0; // Reset attempts since time validation says it's too early
+                    
+                    // Re-enable inputs and restart timer properly
+                    allInputs.forEach(input => input.disabled = false);
+                    restartTimerWithServerTime();
+                    
                 } else {
-                    // Other error - show error and enable manual submission
-                    showWarningAlert('Auto-submit validation failed: ' + data.error, 'danger');
-                    document.getElementById('submit-test-btn').disabled = false;
+                    // Real error - try again with exponential backoff
+                    console.error('Auto-submit failed:', data.error);
+                    showWarningAlert(`Auto-submit failed: ${data.error}. Retrying...`, 'warning');
+                    
+                    // CRITICAL FIX: Don't reset testSubmitted - let exponential backoff handle retry
+                    // Re-enable inputs temporarily
+                    allInputs.forEach(input => input.disabled = false);
+                    
+                    // Retry after delay if under attempt limit
+                    if (autoSubmitAttempts < maxAutoSubmitAttempts) {
+                        testSubmitted = false; // Allow retry
+                        setTimeout(() => autoSubmitTest(), 2000); // Retry after 2 seconds
+                    } else {
+                        enableManualSubmission();
+                    }
                 }
             }
-        })
-        .catch(error => {
-            console.error('v1.5.2 Auto-submit network error:', error);
-            showWarningAlert('Network error during auto-submit. Please submit manually.', 'danger');
             
-            // Re-enable submit button for manual submission
-            document.getElementById('submit-test-btn').disabled = false;
-            allInputs.forEach(input => input.disabled = false);
-            testSubmitted = false;
-        });
+        } catch (error) {
+            console.error('Auto-submit network error:', error);
+            
+            // Network error - retry with exponential backoff
+            if (autoSubmitAttempts < maxAutoSubmitAttempts) {
+                const retryDelay = Math.pow(2, autoSubmitAttempts) * 1000; // 2s, 4s, 8s
+                showWarningAlert(`Network error. Retrying in ${retryDelay/1000}s... (${autoSubmitAttempts}/${maxAutoSubmitAttempts})`, 'warning');
+                
+                // Re-enable inputs temporarily
+                const allInputs = document.querySelectorAll('input, button');
+                allInputs.forEach(input => input.disabled = false);
+                
+                testSubmitted = false; // Allow retry
+                setTimeout(() => autoSubmitTest(), retryDelay);
+            } else {
+                showWarningAlert('Network error during auto-submit. Please submit manually.', 'danger');
+                enableManualSubmission();
+            }
+        }
+    }
+    
+    function restartTimerWithServerTime() {
+        // Reset timer state but keep testSubmitted = true to prevent race conditions
+        testSubmitted = false;
+        warningShown5min = false;
+        warningShown1min = false;
+        
+        // Restart timer with server-provided remaining time
+        timerInterval = setInterval(updateTimer, 1000);
+        console.log('Timer restarted with server time');
+    }
+    
+    function enableManualSubmission() {
+        // Final fallback - enable manual submission
+        testSubmitted = true; // Prevent further auto-submit attempts
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        
+        const submitBtn = document.getElementById('submit-test-btn');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-hand-paper"></i> Submit Manually';
+            submitBtn.classList.add('btn-warning');
+        }
+        
+        // Re-enable all inputs
+        const allInputs = document.querySelectorAll('input, button');
+        allInputs.forEach(input => input.disabled = false);
+        
+        timerText.textContent = 'TIME UP';
     }
     
     // Start timer
     updateTimer();
-    const timerInterval = setInterval(updateTimer, 1000);
+    timerInterval = setInterval(updateTimer, 1000);
     
     // v1.5.2: Server-authoritative approach eliminates need for client time sync
     // Note: Time validation is now handled entirely by server
@@ -662,7 +787,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function proceedWithSubmission() {
         testSubmitted = true;
-        clearInterval(timerInterval);
+        
+        // CRITICAL FIX: Properly clear timer interval
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        
         saveTimerState();
         
         // Clear timer state from localStorage
