@@ -76,11 +76,15 @@ def session_create(request):
                 return redirect('test_sessions:session_create')
             
             # INDUSTRY STANDARD: Prevent duplicate sessions (double-click protection)
-            # Check for existing session with same test, teacher, and start time (within 1 minute)
+            # Check for existing session with same test, teacher, start time AND session name
+            session_name = request.POST.get('session_name', '').strip()
             time_tolerance = timezone.timedelta(minutes=1)
-            existing_session = TestSession.objects.filter(
+            
+            # Check for exact duplicate (same name, test, time, teacher)
+            exact_duplicate = TestSession.objects.filter(
                 test=test,
                 created_by=request.user,
+                session_name=session_name,
                 start_time__range=(
                     start_datetime_utc - time_tolerance,
                     start_datetime_utc + time_tolerance
@@ -88,32 +92,32 @@ def session_create(request):
                 is_active=True
             ).first()
             
-            if existing_session:
+            if exact_duplicate:
+                # This is likely a double-click submission - redirect to existing session
+                existing_local_time = exact_duplicate.start_time.astimezone(user_tz)
+                existing_local_str = existing_local_time.strftime('%b %d, %Y %I:%M %p %Z')
                 messages.warning(request, 
-                    f'A similar session already exists for this test at {start_local_str}. '
-                    f'Access code: {existing_session.access_code}')
-                return redirect('test_sessions:session_detail', pk=existing_session.pk)
+                    f'This session already exists: "{exact_duplicate.session_name}" at {existing_local_str}. '
+                    f'Access code: {exact_duplicate.access_code}')
+                return redirect('test_sessions:session_detail', pk=exact_duplicate.pk)
             
             session = TestSession.objects.create(
                 test=test,
-                session_name=request.POST.get('session_name', '').strip(),
+                session_name=session_name,
                 start_time=start_datetime_utc,  # Store UTC time
                 created_by=request.user
             )
             
-            # Success message with timezone info
-            start_local_str = start_datetime_local.strftime('%b %d, %Y %I:%M %p %Z')
-            start_utc_str = start_datetime_utc.strftime('%b %d, %Y %I:%M %p UTC')
-            messages.success(request, 
-                f'Test session created successfully! Access code: {session.access_code}<br>'
-                f'Local time: {start_local_str}<br>'
-                f'UTC time: {start_utc_str}')
+            # Simple success message
+            messages.success(request, 'Test session created successfully!')
             return redirect('test_sessions:session_detail', pk=session.pk)
             
         except Test.DoesNotExist:
             messages.error(request, 'Invalid test selected.')
-        except ValueError:
+        except ValueError as e:
             messages.error(request, 'Invalid date/time format.')
+        except Exception as e:
+            messages.error(request, f'An error occurred: {str(e)}')
     
     # Get teacher's tests for selection
     tests = Test.objects.filter(created_by=request.user, is_active=True)

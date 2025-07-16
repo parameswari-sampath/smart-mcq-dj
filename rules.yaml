@@ -234,3 +234,92 @@ violation_consequences:
     - Check all related files for same violation
     - Update constants.py if new formats needed
     - Test date/time functionality thoroughly
+
+django_form_handling_rules:
+  double_click_prevention:
+    mandatory_implementation:
+      - ALWAYS implement double-click prevention on forms
+      - Use form 'submit' event handler, NOT button 'click' event
+      - Disable button AFTER form validation passes, not before
+      - Use isSubmitting flag to prevent race conditions
+      - Reset form state on page load/restore events
+    
+    forbidden_approaches:
+      - Never disable button on click event (prevents form submission)
+      - Never use only client-side validation without server-side backup
+      - Never trust client-side timer/state without server validation
+      - Never implement blocking that prevents legitimate form submission
+    
+    implementation_pattern:
+      - "let isSubmitting = false;"
+      - "form.addEventListener('submit', function(e) { ... })"
+      - "if (!form.checkValidity()) return; // Browser validation first"
+      - "isSubmitting = true; button.disabled = true; // Then disable"
+      - "window.addEventListener('pageshow', resetFormState);"
+    
+    server_side_validation:
+      - ALWAYS implement duplicate detection on server
+      - Use database constraints and business logic validation
+      - Include time tolerance for near-simultaneous submissions
+      - Distinguish between exact duplicates and similar records
+      - Provide specific error messages for different scenarios
+    
+    testing_requirements:
+      - Test form submission with valid data
+      - Test double-click prevention mechanism
+      - Test browser back/forward button behavior
+      - Test page refresh during submission
+      - Test network interruption scenarios
+
+  form_validation_hierarchy:
+    client_side:
+      - HTML5 validation attributes (required, pattern, etc.)
+      - JavaScript validation for user experience
+      - Immediate feedback for format errors
+      - Form state management and visual feedback
+    
+    server_side:
+      - Django form validation (primary validation)
+      - Model constraints and business rules
+      - Database integrity checks
+      - Cross-field validation and complex business logic
+    
+    principle: "Client-side for UX, server-side for security and integrity"
+
+  user_experience_guidelines:
+    success_messages:
+      - Keep success messages simple and clear
+      - Avoid overwhelming users with technical details
+      - "Test session created successfully!" vs detailed timezone info
+      - Save detailed information for dedicated detail pages
+    
+    error_messages:
+      - Distinguish between user errors and system errors
+      - Provide actionable guidance when possible
+      - Use consistent language and tone
+      - Handle edge cases gracefully with helpful fallbacks
+    
+    loading_states:
+      - Show immediate visual feedback on form submission
+      - Use spinner icons and loading text
+      - Disable form elements during processing
+      - Provide progress indicators for long operations
+
+  debugging_practices:
+    temporary_debug_logging:
+      - Add comprehensive debug prints during issue investigation
+      - Include request data, processing steps, and error details
+      - Use descriptive debug messages with context
+      - ALWAYS remove debug logging after issue resolution
+    
+    systematic_debugging:
+      - Add debug logging at each major step
+      - Log both success and failure paths
+      - Include variable states and data transformations
+      - Test with debug logging before removing it
+    
+    production_readiness:
+      - Remove all temporary debug prints before deployment
+      - Replace with proper logging framework if needed
+      - Ensure no sensitive data in debug output
+      - Clean code before committing changes
