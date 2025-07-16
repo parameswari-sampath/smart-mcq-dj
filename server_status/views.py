@@ -1,11 +1,14 @@
 import os
 import platform
 import psutil
+import time
+import pytz
 from datetime import datetime
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.db import connection
 from django.conf import settings
+from django.utils import timezone
 
 
 def server_status(request):
@@ -69,6 +72,55 @@ def server_status(request):
             'SECRET_KEY': 'Set' if os.getenv('SECRET_KEY') else 'Not Set',
         }
         
+        # TIMING INFORMATION FOR AUTO-SUBMIT DEBUGGING
+        now_utc = timezone.now()
+        server_local_tz = timezone.get_current_timezone()
+        server_local_time = timezone.localtime(now_utc)
+        
+        # Get system timezone info
+        system_tz = time.tzname
+        system_offset = time.timezone
+        
+        timing_info = {
+            'current_utc': now_utc.isoformat(),
+            'current_utc_formatted': now_utc.strftime('%Y-%m-%d %H:%M:%S UTC'),
+            'server_timezone': str(server_local_tz),
+            'server_local_time': server_local_time.isoformat(),
+            'server_local_formatted': server_local_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'system_timezone': system_tz,
+            'system_offset_hours': -system_offset // 3600,
+            'django_timezone_setting': settings.TIME_ZONE,
+            'django_use_tz': settings.USE_TZ,
+            'timestamp_unix': int(now_utc.timestamp()),
+            'timestamp_ms': int(now_utc.timestamp() * 1000),
+        }
+        
+        # Test different timezone representations
+        common_timezones = ['UTC', 'US/Eastern', 'US/Pacific', 'Europe/London', 'Asia/Tokyo']
+        timezone_comparison = {}
+        for tz_name in common_timezones:
+            try:
+                tz = pytz.timezone(tz_name)
+                local_time = now_utc.astimezone(tz)
+                timezone_comparison[tz_name] = {
+                    'time': local_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'offset': local_time.strftime('%z'),
+                    'dst': local_time.dst() != None
+                }
+            except:
+                timezone_comparison[tz_name] = {'error': 'Invalid timezone'}
+        
+        # Network and request timing
+        request_info = {
+            'request_time': now_utc.isoformat(),
+            'remote_addr': request.META.get('REMOTE_ADDR', 'Unknown'),
+            'http_x_forwarded_for': request.META.get('HTTP_X_FORWARDED_FOR', 'Not Set'),
+            'http_x_real_ip': request.META.get('HTTP_X_REAL_IP', 'Not Set'),
+            'user_agent': request.META.get('HTTP_USER_AGENT', 'Unknown'),
+            'server_name': request.META.get('SERVER_NAME', 'Unknown'),
+            'server_port': request.META.get('SERVER_PORT', 'Unknown'),
+        }
+        
         context = {
             'system_info': system_info,
             'resources': resources,
@@ -77,6 +129,9 @@ def server_status(request):
             'app_info': app_info,
             'uptime': uptime_str,
             'env_vars': env_vars,
+            'timing_info': timing_info,
+            'timezone_comparison': timezone_comparison,
+            'request_info': request_info,
             'current_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'status_ok': db_status == "Connected" and resources['cpu_percent'] < 90 and resources['memory_percent'] < 90,
         }

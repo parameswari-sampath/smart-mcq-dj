@@ -13,6 +13,50 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from smart_mcq.constants import UserRoles
 import json
+import logging
+import os
+from datetime import datetime
+
+# Configure auto-submit logger
+auto_submit_logger = logging.getLogger('auto_submit')
+auto_submit_logger.setLevel(logging.DEBUG)
+
+# Create logs directory if it doesn't exist
+logs_dir = 'logs'
+if not os.path.exists(logs_dir):
+    try:
+        os.makedirs(logs_dir, exist_ok=True)
+    except Exception as e:
+        print(f"Warning: Could not create logs directory: {e}")
+        # Fall back to current directory
+        logs_dir = '.'
+
+# Create file handler for auto-submit logs
+log_file = os.path.join(logs_dir, f'auto_submit_{datetime.now().strftime("%Y_%m_%d")}.log')
+try:
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(logging.DEBUG)
+except Exception as e:
+    print(f"Warning: Could not create log file handler: {e}")
+    # Use console handler only
+    file_handler = None
+
+# Create console handler for immediate feedback
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+# Create formatter
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+# Add handlers to logger
+if file_handler:
+    file_handler.setFormatter(formatter)
+    auto_submit_logger.addHandler(file_handler)
+
+console_handler.setFormatter(formatter)
+auto_submit_logger.addHandler(console_handler)
 
 
 class CustomLoginView(LoginView):
@@ -424,14 +468,49 @@ def save_answer(request, attempt_id):
                 'answered_count': answered_count
             })
         
-        # Handle POST request - save answer
+        # Handle POST request - save answer or log entry
         elif request.method == 'POST':
             try:
                 data = json.loads(request.body)
+                
+                # Check if this is a log entry from frontend
+                if 'log_entry' in data and data.get('log_type') == 'auto_submit_debug':
+                    log_entry = data['log_entry']
+                    log_level = log_entry.get('level', 'INFO')
+                    log_message = log_entry.get('message', '')
+                    log_data = log_entry.get('data', {})
+                    
+                    # Enhanced logging with comprehensive context
+                    log_context = {
+                        'user_id': request.user.id,
+                        'username': request.user.username,
+                        'attempt_id': attempt_id,
+                        'session_id': log_entry.get('session'),
+                        'timestamp': log_entry.get('timestamp'),
+                        'attempt_id_frontend': log_entry.get('attempt_id'),
+                        'user_agent': request.META.get('HTTP_USER_AGENT', ''),
+                        'remote_addr': request.META.get('REMOTE_ADDR', ''),
+                        'frontend_data': log_data,
+                        'url': request.get_full_path(),
+                        'method': request.method
+                    }
+                    
+                    # Log to our dedicated auto-submit logger
+                    logger_method = getattr(auto_submit_logger, log_level.lower(), auto_submit_logger.info)
+                    logger_method(f"FRONTEND_LOG: {log_message} | Context: {json.dumps(log_context, indent=2)}")
+                    
+                    # Also log critical events to console for immediate visibility
+                    if log_level in ['ERROR', 'WARN'] or 'auto-submit' in log_message.lower():
+                        print(f"[AUTO-SUBMIT-{log_level}] {log_message} | User: {request.user.username} | Attempt: {attempt_id}")
+                    
+                    return JsonResponse({'success': True, 'logged': True, 'log_level': log_level})
+                
+                # Handle normal answer saving
                 question_id = data.get('question_id')
                 selected_choice = data.get('selected_choice')
                 time_spent_seconds = data.get('time_spent_seconds', 0)
                 
+                auto_submit_logger.debug(f"Answer save request: question_id={question_id}, choice={selected_choice}, time={time_spent_seconds}, user={request.user.username}")
                 print(f"DEBUG: Save answer request - question_id: {question_id}, choice: {selected_choice}, time: {time_spent_seconds}")
                 
                 # Validate inputs
@@ -447,6 +526,7 @@ def save_answer(request, attempt_id):
                 
                 # Get the question
                 question = test_attempt.test.questions.get(id=question_id)
+                auto_submit_logger.debug(f"Question found: {question.title}")
                 print(f"DEBUG: Found question: {question.title}")
                 
                 # Create or update answer
@@ -464,6 +544,7 @@ def save_answer(request, attempt_id):
                     answer.time_spent_seconds = time_spent_seconds
                     answer.save()
                 
+                auto_submit_logger.debug(f"Answer saved: created={created}, choice={answer.selected_choice}, user={request.user.username}")
                 print(f"DEBUG: Answer saved - created: {created}, choice: {answer.selected_choice}")
                 
                 # Refresh test attempt to get updated progress
@@ -477,6 +558,7 @@ def save_answer(request, attempt_id):
                 })
                 
             except Exception as e:
+                auto_submit_logger.error(f"Error in save_answer POST: {str(e)}, user={request.user.username}, attempt={attempt_id}")
                 print(f"DEBUG: Error in save_answer POST: {str(e)}")
                 return JsonResponse({'success': False, 'error': f'Server error: {str(e)}'})
         
@@ -528,8 +610,10 @@ def submit_test(request, attempt_id):
             try:
                 data = json.loads(request.body)
                 if data.get('auto_submit'):
+                    auto_submit_logger.info(f"SUBMIT_TEST_ROUTING_TO_AUTO: user={request.user.username}, attempt={attempt_id}")
                     return auto_submit_test(request, test_attempt)
-            except:
+            except Exception as e:
+                auto_submit_logger.error(f"SUBMIT_TEST_JSON_ERROR: {str(e)}, user={request.user.username}, attempt={attempt_id}")
                 pass
         
         # For manual submissions, check if test session is still active
@@ -603,12 +687,14 @@ def submit_test(request, attempt_id):
         
     except TestAttempt.DoesNotExist:
         error_msg = 'Test attempt not found.'
+        auto_submit_logger.error(f"SUBMIT_TEST_NOT_FOUND: attempt={attempt_id}, user={request.user.username}")
         if request.content_type == 'application/json':
             return JsonResponse({'success': False, 'error': error_msg})
         messages.error(request, error_msg)
         return redirect('dashboard')
     except Exception as e:
         error_msg = f'Error submitting test: {str(e)}'
+        auto_submit_logger.error(f"SUBMIT_TEST_ERROR: {str(e)}, attempt={attempt_id}, user={request.user.username}")
         if request.content_type == 'application/json':
             return JsonResponse({'success': False, 'error': error_msg})
         messages.error(request, error_msg)
@@ -625,16 +711,47 @@ def auto_submit_test(request, test_attempt):
     from django.http import JsonResponse
     from django.urls import reverse
     import logging
+    import json
     
     logger = logging.getLogger(__name__)
     
+    # COMPREHENSIVE AUTO-SUBMIT LOGGING
+    auto_submit_logger.info(f"AUTO_SUBMIT_SERVER_START: user={request.user.username}, attempt={test_attempt.id}")
+    
+    # Parse request data for logging
+    try:
+        request_data = json.loads(request.body) if request.body else {}
+        auto_submit_logger.info(f"AUTO_SUBMIT_REQUEST_DATA: {json.dumps(request_data, indent=2)}")
+    except json.JSONDecodeError as e:
+        auto_submit_logger.error(f"AUTO_SUBMIT_JSON_ERROR: {str(e)}")
+        request_data = {}
+    
+    # Log server environment context
+    server_context = {
+        'server_time_utc': timezone.now().isoformat(),
+        'user_id': request.user.id,
+        'username': request.user.username,
+        'attempt_id': test_attempt.id,
+        'test_id': test_attempt.test.id,
+        'test_title': test_attempt.test.title,
+        'user_agent': request.META.get('HTTP_USER_AGENT', ''),
+        'remote_addr': request.META.get('REMOTE_ADDR', ''),
+        'http_x_forwarded_for': request.META.get('HTTP_X_FORWARDED_FOR', ''),
+        'content_type': request.content_type,
+        'session_key': request.session.session_key,
+        'request_data': request_data
+    }
+    auto_submit_logger.info(f"AUTO_SUBMIT_SERVER_CONTEXT: {json.dumps(server_context, indent=2)}")
+    
     # Security: Double-check that test_attempt belongs to current user
     if test_attempt.student != request.user:
+        auto_submit_logger.error(f"AUTO_SUBMIT_ACCESS_DENIED: user={request.user.id} attempting {test_attempt.id}")
         logger.warning(f"Auto-submit access denied for user {request.user.id} attempting {test_attempt.id}")
         return JsonResponse({'success': False, 'error': 'Access denied'})
     
     # Check if already submitted
     if test_attempt.is_submitted:
+        auto_submit_logger.warn(f"AUTO_SUBMIT_ALREADY_SUBMITTED: test={test_attempt.id}, user={request.user.username}")
         logger.info(f"Auto-submit attempted on already submitted test {test_attempt.id}")
         return JsonResponse({'success': False, 'error': 'Test has already been submitted'})
     
@@ -650,10 +767,24 @@ def auto_submit_test(request, test_attempt):
     grace_period = timezone.timedelta(seconds=30)
     grace_end_time = actual_end_time_utc + grace_period
     
+    # Log timing calculations for debugging
+    timing_context = {
+        'test_start_time_utc': test_start_time_utc.isoformat(),
+        'test_duration_minutes': session.test.time_limit_minutes,
+        'actual_end_time_utc': actual_end_time_utc.isoformat(),
+        'current_server_time_utc': current_server_time_utc.isoformat(),
+        'grace_end_time': grace_end_time.isoformat(),
+        'time_since_start': (current_server_time_utc - test_start_time_utc).total_seconds(),
+        'time_until_end': (actual_end_time_utc - current_server_time_utc).total_seconds(),
+        'grace_period_seconds': 30
+    }
+    auto_submit_logger.info(f"AUTO_SUBMIT_TIMING_CALC: {json.dumps(timing_context, indent=2)}")
+    
     # Server-side validation: Only allow auto-submit if time has actually expired
     if current_server_time_utc < actual_end_time_utc:
         # Test time has not actually expired yet
         remaining_seconds = int((actual_end_time_utc - current_server_time_utc).total_seconds())
+        auto_submit_logger.warn(f"AUTO_SUBMIT_PREMATURE_BLOCKED: test={test_attempt.id}, remaining={remaining_seconds}s, user={request.user.username}")
         logger.warning(f"Premature auto-submit blocked for test {test_attempt.id}, {remaining_seconds}s remaining")
         return JsonResponse({
             'success': False, 
@@ -667,6 +798,7 @@ def auto_submit_test(request, test_attempt):
     if current_server_time_utc > grace_end_time:
         # Beyond grace period, but still allow (answers are continuously saved)
         grace_exceeded_seconds = int((current_server_time_utc - grace_end_time).total_seconds())
+        auto_submit_logger.warn(f"AUTO_SUBMIT_BEYOND_GRACE: test={test_attempt.id}, late={grace_exceeded_seconds}s, user={request.user.username}")
         logger.info(f"Auto-submit beyond grace period for test {test_attempt.id}, {grace_exceeded_seconds}s late")
     
     # Log auto-submit trigger details for monitoring
@@ -691,6 +823,7 @@ def auto_submit_test(request, test_attempt):
         'test_duration_minutes': session.test.time_limit_minutes
     }
     
+    auto_submit_logger.info(f"AUTO_SUBMIT_TIMING_VALID: test={test_attempt.id}, time_since_expiry={time_since_expiry}s, user={request.user.username}")
     logger.info(f"Auto-submit triggered for test {test_attempt.id}, {time_since_expiry}s after expiry - {log_data}")
     
     # Calculate total time spent using server timestamps
@@ -759,9 +892,11 @@ def auto_submit_test(request, test_attempt):
         'score_percentage': score_percentage,
         'correct_answers': correct_answers,
         'total_questions': total_questions,
-        'time_since_expiry_seconds': time_since_expiry
+        'time_since_expiry_seconds': time_since_expiry,
+        'grace_period_used': time_since_expiry <= 30
     }
     
+    auto_submit_logger.info(f"AUTO_SUBMIT_SUCCESS: {json.dumps(completion_log, indent=2)}")
     logger.info(f"Auto-submit completed successfully for test {test_attempt.id} - {completion_log}")
     
     return JsonResponse({

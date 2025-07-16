@@ -235,34 +235,58 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     {% endif %}
     
-    // INDUSTRY STANDARD: Immediate button disable to prevent double-click
+    // INDUSTRY STANDARD: Form submission with double-click prevention
+    let isSubmitting = false;
+    
+    sessionForm.addEventListener('submit', function(e) {
+        // Prevent duplicate submissions
+        if (isSubmitting) {
+            e.preventDefault();
+            return false;
+        }
+        
+        // Validate form before submission
+        if (!sessionForm.checkValidity()) {
+            return; // Let browser handle validation
+        }
+        
+        // Mark as submitting and update UI
+        isSubmitting = true;
+        submitBtn.disabled = true;
+        submitIcon.className = 'fas fa-spinner fa-spin';
+        submitText.textContent = '{{ action }}ing...';
+        submitBtn.classList.add('btn-loading');
+        
+        // Form will submit after this handler completes
+    });
+    
+    // Additional click handler for immediate feedback
     submitBtn.addEventListener('click', function(e) {
-        // If already disabled, prevent any action
-        if (this.disabled) {
+        if (isSubmitting) {
             e.preventDefault();
             e.stopPropagation();
             return false;
         }
-        
-        // Immediately disable button
-        this.disabled = true;
-        
-        // Update visual state
-        submitIcon.className = 'fas fa-spinner fa-spin';
-        submitText.textContent = '{{ action }}ing...';
-        this.classList.add('btn-loading');
-        
-        // Form will submit naturally after this click handler
     });
     
-    // Reset form state if back button is pressed
+    // Reset form state if back button is pressed or page is restored
     window.addEventListener('pageshow', function(event) {
         if (event.persisted) {
+            isSubmitting = false;
             submitBtn.disabled = false;
             submitIcon.className = 'fas fa-save';
             submitText.textContent = '{{ action }} Session';
             submitBtn.classList.remove('btn-loading');
         }
+    });
+    
+    // Reset on page load to ensure clean state
+    window.addEventListener('load', function() {
+        isSubmitting = false;
+        submitBtn.disabled = false;
+        submitIcon.className = 'fas fa-save';
+        submitText.textContent = '{{ action }} Session';
+        submitBtn.classList.remove('btn-loading');
     });
 });
 </script>
