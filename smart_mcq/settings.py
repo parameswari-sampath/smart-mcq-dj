@@ -170,3 +170,52 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/accounts/dashboard/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+# Enhanced logging configuration for auto-submit debugging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'logs/django.log',
+            'formatter': 'verbose',
+        },
+        'auto_submit_file': {
+            'class': 'logging.FileHandler',
+            'filename': 'logs/auto_submit_{}.log'.format(timezone.now().strftime('%Y_%m_%d')),
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'accounts.views': {
+            'handlers': ['auto_submit_file', 'console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'auto_submit': {
+            'handlers': ['auto_submit_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}

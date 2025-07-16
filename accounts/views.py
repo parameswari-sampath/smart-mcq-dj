@@ -671,7 +671,27 @@ def auto_submit_test(request, test_attempt):
     
     # Log auto-submit trigger details for monitoring
     time_since_expiry = int((current_server_time_utc - actual_end_time_utc).total_seconds())
-    logger.info(f"Auto-submit triggered for test {test_attempt.id}, {time_since_expiry}s after expiry")
+    
+    # Create comprehensive log entry for debugging
+    log_data = {
+        'event': 'auto_submit_triggered',
+        'test_attempt_id': test_attempt.id,
+        'user_id': request.user.id,
+        'username': request.user.username,
+        'test_start_time_utc': test_start_time_utc.isoformat(),
+        'actual_end_time_utc': actual_end_time_utc.isoformat(),
+        'current_server_time_utc': current_server_time_utc.isoformat(),
+        'time_since_expiry_seconds': time_since_expiry,
+        'grace_period_seconds': 30,
+        'within_grace_period': time_since_expiry <= 30,
+        'request_method': request.method,
+        'request_content_type': request.content_type,
+        'user_agent': request.META.get('HTTP_USER_AGENT', ''),
+        'remote_addr': request.META.get('REMOTE_ADDR', ''),
+        'test_duration_minutes': session.test.time_limit_minutes
+    }
+    
+    logger.info(f"Auto-submit triggered for test {test_attempt.id}, {time_since_expiry}s after expiry - {log_data}")
     
     # Calculate total time spent using server timestamps
     total_time_spent = int((current_server_time_utc - test_attempt.started_at).total_seconds())
@@ -727,7 +747,22 @@ def auto_submit_test(request, test_attempt):
         }
     }
     
-    logger.info(f"Auto-submit completed successfully for test {test_attempt.id}")
+    # Log successful auto-submit completion
+    completion_log = {
+        'event': 'auto_submit_completed',
+        'test_attempt_id': test_attempt.id,
+        'user_id': request.user.id,
+        'username': request.user.username,
+        'submitted_at_utc': current_server_time_utc.isoformat(),
+        'total_time_spent_seconds': total_time_spent,
+        'question_time_spent_seconds': question_time_spent,
+        'score_percentage': score_percentage,
+        'correct_answers': correct_answers,
+        'total_questions': total_questions,
+        'time_since_expiry_seconds': time_since_expiry
+    }
+    
+    logger.info(f"Auto-submit completed successfully for test {test_attempt.id} - {completion_log}")
     
     return JsonResponse({
         'success': True,
@@ -735,7 +770,10 @@ def auto_submit_test(request, test_attempt):
         'redirect_url': reverse('test_results'),
         'server_validation': {
             'submitted_at_utc': current_server_time_utc.isoformat(),
-            'time_since_expiry': time_since_expiry
+            'time_since_expiry': time_since_expiry,
+            'grace_period_used': time_since_expiry <= 30,
+            'total_time_spent': total_time_spent,
+            'score_percentage': score_percentage
         }
     })
 
@@ -1253,3 +1291,41 @@ def individual_result_release(request, session_id, attempt_id):
         return JsonResponse({'success': False, 'error': 'Test session or attempt not found'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+def refresh_csrf_token(request):
+    """
+    Enhanced CSRF token refresh endpoint for long-running test sessions
+    Provides fresh CSRF tokens to prevent expiration during tests
+    """
+    from django.middleware.csrf import get_token
+    from django.utils import timezone
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'})
+    
+    try:
+        # Generate fresh CSRF token
+        new_token = get_token(request)
+        
+        # Log the token refresh for monitoring
+        logger.info(f"CSRF token refreshed for user {request.user.id} ({request.user.username})")
+        
+        return JsonResponse({
+            'success': True,
+            'csrf_token': new_token,
+            'refreshed_at': timezone.now().isoformat(),
+            'user_id': request.user.id
+        })
+        
+    except Exception as e:
+        logger.error(f"CSRF token refresh failed for user {request.user.id}: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Failed to refresh CSRF token',
+            'details': str(e)
+        })

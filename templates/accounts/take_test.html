@@ -260,11 +260,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Track this save operation
         pendingSaves++;
         
-        fetch(`{% url 'save_answer' test_attempt.id %}`, {
+        fetchWithCSRFRetry(`{% url 'save_answer' test_attempt.id %}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 question_id: questionId,
@@ -340,6 +339,95 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         return cookieValue;
+    }
+
+    // Enhanced CSRF token management for long-running sessions
+    function refreshCSRFToken() {
+        return fetch('/accounts/refresh-csrf-token/', {
+            method: 'GET',
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to refresh CSRF token');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success && data.csrf_token) {
+                // Update the CSRF token in the DOM
+                const csrfInputs = document.querySelectorAll('[name="csrfmiddlewaretoken"]');
+                csrfInputs.forEach(input => {
+                    input.value = data.csrf_token;
+                });
+                
+                // Update the CSRF cookie
+                document.cookie = `csrftoken=${data.csrf_token}; path=/; SameSite=Lax`;
+                
+                console.log('CSRF token refreshed successfully');
+                return data.csrf_token;
+            } else {
+                throw new Error('Invalid CSRF token response');
+            }
+        })
+        .catch(error => {
+            console.error('CSRF token refresh failed:', error);
+            throw error;
+        });
+    }
+
+    // Enhanced fetch with CSRF token retry mechanism
+    function fetchWithCSRFRetry(url, options = {}) {
+        const maxRetries = 2;
+        let retryCount = 0;
+        
+        function attemptFetch() {
+            // Always get fresh CSRF token for each attempt
+            const csrfToken = getCookie('csrftoken');
+            
+            const fetchOptions = {
+                ...options,
+                headers: {
+                    ...options.headers,
+                    'X-CSRFToken': csrfToken
+                }
+            };
+            
+            return fetch(url, fetchOptions)
+                .then(response => {
+                    // Check if CSRF error occurred
+                    if (response.status === 403 && retryCount < maxRetries) {
+                        retryCount++;
+                        console.log(`CSRF error detected, attempting refresh and retry ${retryCount}/${maxRetries}`);
+                        
+                        // Refresh CSRF token and retry
+                        return refreshCSRFToken()
+                            .then(newToken => {
+                                // Update headers with new token
+                                fetchOptions.headers['X-CSRFToken'] = newToken;
+                                return fetch(url, fetchOptions);
+                            })
+                            .catch(refreshError => {
+                                console.error('CSRF token refresh failed, falling back to page reload');
+                                // As last resort, reload the page to get fresh tokens
+                                window.location.reload();
+                                return Promise.reject(refreshError);
+                            });
+                    }
+                    
+                    return response;
+                })
+                .catch(error => {
+                    if (retryCount < maxRetries) {
+                        retryCount++;
+                        console.log(`Network error, retrying ${retryCount}/${maxRetries}:`, error);
+                        return attemptFetch();
+                    }
+                    throw error;
+                });
+        }
+        
+        return attemptFetch();
     }
     
     // v1.5.2: Display-only timer (server controls actual auto-submit)
@@ -455,16 +543,15 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.removeItem(timerKey);
         
         // Immediate auto-submit attempt (server will validate if time actually expired)
-        fetch(`{% url 'submit_test' test_attempt.id %}`, {
+        fetchWithCSRFRetry(`{% url 'submit_test' test_attempt.id %}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 auto_submit: true,
                 client_timestamp: new Date().toISOString(),
-                trigger_source: 'client_timer_v1.5.2'
+                trigger_source: 'client_timer_v1.5.2_enhanced'
             })
         })
         .then(response => response.json())
@@ -515,6 +602,75 @@ document.addEventListener('DOMContentLoaded', function() {
     // Note: Time validation is now handled entirely by server
     // Client timer is display-only and does not control auto-submit timing
     console.log('v1.5.2: Using server-authoritative timing - no client time sync needed');
+
+    // Enhanced session monitoring and heartbeat system
+    let sessionHealthMonitor = {
+        heartbeatInterval: null,
+        csrfRefreshInterval: null,
+        lastHeartbeat: Date.now(),
+        
+        start() {
+            // Heartbeat every 30 seconds to monitor session health
+            this.heartbeatInterval = setInterval(() => {
+                this.sendHeartbeat();
+            }, 30000);
+            
+            // Refresh CSRF token every 10 minutes preventively
+            this.csrfRefreshInterval = setInterval(() => {
+                this.refreshCSRFPreventively();
+            }, 600000); // 10 minutes
+        },
+        
+        stop() {
+            if (this.heartbeatInterval) {
+                clearInterval(this.heartbeatInterval);
+                this.heartbeatInterval = null;
+            }
+            if (this.csrfRefreshInterval) {
+                clearInterval(this.csrfRefreshInterval);
+                this.csrfRefreshInterval = null;
+            }
+        },
+        
+        sendHeartbeat() {
+            if (testSubmitted) return;
+            
+            fetchWithCSRFRetry(`{% url 'save_answer' test_attempt.id %}`, {
+                method: 'GET'
+            })
+            .then(response => {
+                if (response.ok) {
+                    this.lastHeartbeat = Date.now();
+                    console.log('Session heartbeat successful');
+                } else {
+                    console.warn('Session heartbeat failed:', response.status);
+                }
+            })
+            .catch(error => {
+                console.error('Session heartbeat error:', error);
+            });
+        },
+        
+        refreshCSRFPreventively() {
+            if (testSubmitted) return;
+            
+            refreshCSRFToken()
+                .then(token => {
+                    console.log('Preventive CSRF token refresh successful');
+                })
+                .catch(error => {
+                    console.warn('Preventive CSRF token refresh failed:', error);
+                });
+        }
+    };
+    
+    // Start session monitoring
+    sessionHealthMonitor.start();
+    
+    // Stop monitoring when test is submitted
+    window.addEventListener('beforeunload', () => {
+        sessionHealthMonitor.stop();
+    });
     
     // Submit test functionality
     const submitBtn = document.getElementById('submit-test-btn');
@@ -591,11 +747,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Submission modal functionality
     function showSubmissionModal() {
         // Fetch current answered count from server to ensure accuracy
-        fetch(`{% url 'save_answer' test_attempt.id %}`, {
-            method: 'GET',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken')
-            }
+        fetchWithCSRFRetry(`{% url 'save_answer' test_attempt.id %}`, {
+            method: 'GET'
         })
         .then(response => response.json())
         .then(data => {

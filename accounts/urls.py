@@ -34,4 +34,7 @@ urlpatterns = [
     # Result release management (v1.4.1)
     path('teacher-results/<int:session_id>/release-management/', views.teacher_result_release_management, name='teacher_result_release_management'),
     path('teacher-results/<int:session_id>/release/<int:attempt_id>/', views.individual_result_release, name='individual_result_release'),
+    
+    # CSRF token refresh for long-running sessions
+    path('refresh-csrf-token/', views.refresh_csrf_token, name='refresh_csrf_token'),
 ]
