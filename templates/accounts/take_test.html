@@ -205,8 +205,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // Timer variables
     const timerDisplay = document.getElementById('timer-display');
     const timerText = document.getElementById('timer-text');
-    const testEndTime = new Date('{{ test_end_time|date:"c" }}');
     const attemptId = '{{ test_attempt.id }}';
+    
+    // v1.5.2: Server-authoritative timer (display-only client implementation)
+    // Industry pattern: Client timer is UI indicator only, server controls all timing decisions
+    const testEndTimeUTC = new Date('{{ test_end_time_utc|date:"c" }}'); // Server-calculated UTC end time
+    const serverTimeUTC = new Date('{{ server_time_utc|date:"c" }}');   // Current server UTC time
+    const clientStartTime = new Date();                                 // Client reference time
+    
+    // Server-provided remaining time (authoritative)
+    let serverRemainingSeconds = {{ remaining_seconds }};
+    const gracePeriodSeconds = {{ grace_period_seconds }};
+    
+    console.log('v1.5.2 Server-Authoritative Timer:', {
+        testEndTimeUTC: testEndTimeUTC.toISOString(),
+        serverTimeUTC: serverTimeUTC.toISOString(),
+        serverRemainingSeconds: serverRemainingSeconds,
+        gracePeriodSeconds: gracePeriodSeconds,
+        userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        displayPurposeOnly: 'Client timer is for display only - server controls auto-submit'
+    });
     
     // Load timer state from localStorage for persistence
     const timerKey = `test_timer_${attemptId}`;
@@ -324,44 +342,57 @@ document.addEventListener('DOMContentLoaded', function() {
         return cookieValue;
     }
     
-    // Countdown timer functionality
+    // v1.5.2: Display-only timer (server controls actual auto-submit)
     function updateTimer() {
         if (testSubmitted) return;
         
-        const now = new Date();
-        const timeRemaining = testEndTime - now;
+        // Calculate elapsed time since page load
+        const elapsedSeconds = Math.floor((new Date() - clientStartTime) / 1000);
         
-        if (timeRemaining <= 0) {
-            // Auto-submit when time runs out
+        // Calculate estimated remaining time (display purpose only)
+        const estimatedRemainingSeconds = Math.max(0, serverRemainingSeconds - elapsedSeconds);
+        
+        // Debug logging for troubleshooting (less frequent to reduce noise)
+        if (estimatedRemainingSeconds <= 60 && estimatedRemainingSeconds % 10 === 0) {
+            console.log('v1.5.2 Display Timer (Final Minute):', {
+                estimatedRemainingSeconds: estimatedRemainingSeconds,
+                serverProvidedRemaining: serverRemainingSeconds,
+                elapsedSincePageLoad: elapsedSeconds,
+                note: 'Display only - server controls actual auto-submit timing'
+            });
+        }
+        
+        // Trigger client-side auto-submit attempt (server will validate)
+        if (estimatedRemainingSeconds <= 0) {
+            console.log('⏰ Client timer expired - attempting auto-submit (server will validate)');
             autoSubmitTest();
             return;
         }
         
-        // Calculate minutes and seconds
-        const totalSeconds = Math.floor(timeRemaining / 1000);
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
+        // Calculate minutes and seconds for display
+        const minutes = Math.floor(estimatedRemainingSeconds / 60);
+        const seconds = estimatedRemainingSeconds % 60;
         
         // Format timer display
         const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         timerText.textContent = formattedTime;
         
-        // Update timer appearance based on time remaining
+        // Update timer appearance based on estimated time remaining
         timerDisplay.className = 'timer-display';
-        if (timeRemaining <= 60000) { // Last minute
+        if (estimatedRemainingSeconds <= 60) { // Last minute
             timerDisplay.classList.add('danger');
-        } else if (timeRemaining <= 300000) { // Last 5 minutes
+        } else if (estimatedRemainingSeconds <= 300) { // Last 5 minutes
             timerDisplay.classList.add('warning');
         }
         
-        // Show warning alerts
-        if (timeRemaining <= 300000 && timeRemaining > 240000 && !warningShown5min) {
+        // Show warning alerts (using estimated time for UX)
+        if (estimatedRemainingSeconds <= 300 && estimatedRemainingSeconds > 295 && !warningShown5min) {
             showWarningAlert('5 minutes remaining!', 'warning');
             warningShown5min = true;
             saveTimerState();
         }
         
-        if (timeRemaining <= 60000 && timeRemaining > 30000 && !warningShown1min) {
+        if (estimatedRemainingSeconds <= 60 && estimatedRemainingSeconds > 55 && !warningShown1min) {
             showWarningAlert('1 minute remaining!', 'danger');
             warningShown1min = true;
             saveTimerState();
@@ -406,6 +437,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function autoSubmitTest() {
         if (testSubmitted) return;
         
+        console.log('🚀 v1.5.2 Auto-submit triggered - Server will validate timing');
+        
         testSubmitted = true;
         saveTimerState();
         timerText.textContent = '00:00';
@@ -414,49 +447,74 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show auto-submit message
         showWarningAlert('Time is up! Auto-submitting test...', 'danger');
         
-        // Disable all form elements
+        // Disable all form elements to prevent further interaction
         const allInputs = document.querySelectorAll('input, button');
         allInputs.forEach(input => input.disabled = true);
         
         // Clear timer state from localStorage
         localStorage.removeItem(timerKey);
         
-        // Auto-submit the test after 2 seconds using fetch with CSRF token
-        setTimeout(() => {
-            fetch(`{% url 'submit_test' test_attempt.id %}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({
-                    auto_submit: true
-                })
+        // Immediate auto-submit attempt (server will validate if time actually expired)
+        fetch(`{% url 'submit_test' test_attempt.id %}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                auto_submit: true,
+                client_timestamp: new Date().toISOString(),
+                trigger_source: 'client_timer_v1.5.2'
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Redirect to results page
-                    window.location.href = data.redirect_url || '{% url "dashboard" %}';
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('v1.5.2 Auto-submit response:', data);
+            
+            if (data.success) {
+                // Server validated and accepted auto-submit
+                console.log('✅ Server validated auto-submit successful');
+                window.location.href = data.redirect_url || '{% url "dashboard" %}';
+            } else {
+                // Server rejected auto-submit (timing validation failed)
+                console.warn('⚠️ Server rejected auto-submit:', data.error);
+                
+                if (data.remaining_seconds && data.remaining_seconds > 0) {
+                    // Time hasn't actually expired yet - server prevented premature submission
+                    showWarningAlert(`Server validation: ${data.remaining_seconds}s remaining. Timer will retry.`, 'warning');
+                    
+                    // Re-enable inputs and continue timer
+                    allInputs.forEach(input => input.disabled = false);
+                    testSubmitted = false;
+                    
+                    // Update server remaining time for accuracy
+                    serverRemainingSeconds = data.remaining_seconds;
                 } else {
-                    console.error('Auto-submit failed:', data.error);
-                    showWarningAlert('Auto-submit failed: ' + data.error, 'danger');
-                    // Re-enable submit button for manual submission
+                    // Other error - show error and enable manual submission
+                    showWarningAlert('Auto-submit validation failed: ' + data.error, 'danger');
                     document.getElementById('submit-test-btn').disabled = false;
                 }
-            })
-            .catch(error => {
-                console.error('Auto-submit error:', error);
-                showWarningAlert('Auto-submit failed. Please submit manually.', 'danger');
-                // Re-enable submit button for manual submission
-                document.getElementById('submit-test-btn').disabled = false;
-            });
-        }, 2000);
+            }
+        })
+        .catch(error => {
+            console.error('v1.5.2 Auto-submit network error:', error);
+            showWarningAlert('Network error during auto-submit. Please submit manually.', 'danger');
+            
+            // Re-enable submit button for manual submission
+            document.getElementById('submit-test-btn').disabled = false;
+            allInputs.forEach(input => input.disabled = false);
+            testSubmitted = false;
+        });
     }
     
     // Start timer
     updateTimer();
     const timerInterval = setInterval(updateTimer, 1000);
+    
+    // v1.5.2: Server-authoritative approach eliminates need for client time sync
+    // Note: Time validation is now handled entirely by server
+    // Client timer is display-only and does not control auto-submit timing
+    console.log('v1.5.2: Using server-authoritative timing - no client time sync needed');
     
     // Submit test functionality
     const submitBtn = document.getElementById('submit-test-btn');

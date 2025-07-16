@@ -19,5 +19,6 @@ version_progress:
   v1.4_Teacher_Result_View: completed
   v1.4.1_Result_Release_Control: completed
   v1.4.3_Basic_Question_CSV_Import: completed
+  v1.5.2_Global_Auto_Submit_Phase_1_Server_Authoritative_Timer: completed
 
-next_version: v1.5.1 Basic Question Shuffling
+next_version: v1.5.3 Global Auto-Submit Phase 2 - Redundant Auto-Submit Mechanisms

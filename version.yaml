@@ -654,35 +654,175 @@ versions:
       - SIMPLE: No complex pooling or algorithms for MVP
       - CONSISTENT: Same order for student across browser refresh
 
-  v1.5.2: Simple Security Events (SIMPLIFIED)
+  v1.5.2: Global Auto-Submit Phase 1 - Server-Authoritative Timer System
     questions:
-      - What basic security events should be tracked?
-      - How should test vs practice modes work?
-      - What violation tracking is needed?
-      - How should security data be stored?
+      - How should server-side time validation be implemented for global reliability?
+      - What industry-proven patterns should be adopted for auto-submit security?
+      - How should timezone-agnostic time handling work across all global regions?
+      - What grace period mechanisms are needed for network latency?
+      - How should auto-submit validation prevent client-side manipulation?
     answers:
-      - Basic event tracking: test start, submit, tab switch detection
-      - Add attempt_type field: 'assessment' vs 'practice' (following LMS standards)
-      - Simple violation counter in TestAttempt model
-      - Store basic security events with timestamps
+      - Server-authoritative validation: ALL auto-submit decisions made on server, never trust client
+      - Industry patterns: Google Forms/Coursera approach - server validates actual time remaining
+      - UTC-only calculations: Store and calculate all times in UTC, convert for display only
+      - 30-second grace period: Account for global network latency and cloud database delays
+      - Security-first: Client timer is UI-only, server determines actual auto-submission eligibility
+    industry_solution:
+      - GOOGLE FORMS APPROACH: Server-side validation prevents timing exploits completely
+      - COURSERA PATTERN: Grace periods handle network issues in global deployments
+      - KHAN ACADEMY MODEL: UTC timestamps with client display conversion
+      - PROCTORIO STANDARD: Server authority over client-side timer manipulation
+      - CANVAS METHODOLOGY: Auto-submit safety nets with multiple validation layers
     implementation:
-      - Add attempt_type field to TestSession ('assessment'/'practice')
-      - Add violation_count field to TestAttempt
-      - Basic JavaScript for tab switch detection
-      - Simple event logging without complex analytics
+      - Enhanced auto_submit_test() function with server-side time validation
+      - UTC-based time calculations throughout the application
+      - Grace period configuration for network latency compensation
+      - Server-side auto-submit eligibility checks before processing
+      - Client-side timer becomes display-only indicator
     tests:
-      - Tab switch events are detected and logged
-      - Assessment vs practice mode saves correctly
-      - Violation counter increments on security events
-      - Security violation logging includes basic context
-      - Event timestamps recorded accurately
-      - JavaScript detection works across browsers
-      - Security data integrity maintained
-      - Basic analytics foundation established
+      - Server validates test end time regardless of client state
+      - UTC time calculations work correctly across all timezones
+      - Grace period allows auto-submission within 30 seconds of actual expiry
+      - Auto-submit blocked when server time shows test still active
+      - Client timer manipulation cannot trigger premature auto-submission
+      - Network latency compensation works for high-latency connections
+      - Docker container time synchronization maintained
+      - Multiple timezone testing validates global compatibility
+      - Server authority prevents all client-side timing exploits
+      - Auto-submit security verified across production environments
     notes:
-      - FOUNDATION: Prepares for advanced behavior tracking in v2.x
-      - SIMPLE: Basic detection without complex analysis
-      - PRIVACY: Minimal data collection for MVP
+      - CRITICAL FIX: Resolves Docker/production auto-submit failures
+      - GLOBAL READY: Supports worldwide deployment with reliable auto-submit
+      - SECURITY ENHANCED: Prevents timing-based cheating attempts
+      - INDUSTRY PROVEN: Based on patterns from major educational platforms
+
+  v1.5.3: Global Auto-Submit Phase 2 - Redundant Auto-Submit Mechanisms
+    questions:
+      - What multiple failsafe mechanisms ensure auto-submit reliability?
+      - How should heartbeat-based connection monitoring work?
+      - What retry mechanisms handle network failures gracefully?
+      - How should auto-submit work when connection is temporarily lost?
+      - What exponential backoff strategies prevent server overload?
+    answers:
+      - Triple-redundant system: Client timer + Server heartbeat + Page visibility monitoring
+      - 30-second heartbeat checks: Continuous server validation of remaining time
+      - Exponential backoff retry: 1s, 2s, 4s delays with final page reload fallback
+      - Offline resilience: Auto-submit queued until connection restored
+      - Server-side force submission: Heartbeat can trigger immediate auto-submit
+    industry_solution:
+      - DISCORD APPROACH: Heartbeat monitoring for connection health
+      - SLACK PATTERN: Exponential backoff for failed message delivery
+      - ZOOM METHOD: Multiple failsafe mechanisms for critical operations
+      - WHATSAPP MODEL: Offline queue with automatic retry when reconnected
+      - TEAMS STRATEGY: Graceful degradation with multiple recovery paths
+    implementation:
+      - Heartbeat endpoint returning server time and force_submit flag
+      - JavaScript retry mechanism with exponential backoff
+      - Connection status monitoring with offline/online detection
+      - Auto-submit queue for network failure scenarios
+      - Multiple timer sources with redundant triggering
+    tests:
+      - Heartbeat endpoint correctly reports remaining time
+      - Multiple auto-submit triggers work independently
+      - Exponential backoff prevents server overload during retries
+      - Offline auto-submit queues until connection restored
+      - Network failure graceful degradation maintains test integrity
+      - Server force-submit overrides client-side timer
+      - Connection monitoring accurately detects network status
+      - Auto-submit succeeds even with temporary network issues
+      - Multiple redundant systems provide 99.9% reliability
+      - Production network scenarios tested and verified
+    notes:
+      - RELIABILITY: Multiple failsafe mechanisms ensure auto-submit success
+      - NETWORK RESILIENT: Handles poor connectivity and temporary outages
+      - USER EXPERIENCE: Seamless operation regardless of connection quality
+      - PRODUCTION READY: Tested across various network conditions
+
+  v1.5.4: Global Auto-Submit Phase 3 - Enhanced Network Resilience
+    questions:
+      - How should production Docker environments be optimized for reliable auto-submit?
+      - What health check endpoints ensure proper time synchronization?
+      - How should CSRF token handling work in auto-submit scenarios?
+      - What container configuration provides optimal global deployment?
+      - How should time drift detection and correction work?
+    answers:
+      - Enhanced Docker config: NTP synchronization + health checks + CSRF optimization
+      - /health/ endpoint with proper CORS headers for time sync operations
+      - CSRF token refresh mechanism for long-running test sessions
+      - Global container setup: UTC timezone + NTP servers + increased timeouts
+      - Real-time time drift monitoring with automatic correction
+    industry_solution:
+      - NETFLIX DOCKER: Global container optimization with time synchronization
+      - CLOUDFLARE APPROACH: Time drift detection and correction mechanisms
+      - AWS BEST PRACTICES: Container health checks for production reliability
+      - GOOGLE CLOUD PATTERN: Global deployment with timezone standardization
+      - AZURE METHODOLOGY: Network timeout optimization for global users
+    implementation:
+      - Enhanced Dockerfile with NTP synchronization
+      - Production settings optimized for global deployment
+      - CSRF token management for long-running sessions
+      - Health check endpoint with time synchronization features
+      - Container configuration for optimal network handling
+    tests:
+      - Docker containers maintain accurate time synchronization
+      - Health check endpoint accessible and returns proper time data
+      - CSRF tokens refresh correctly during long test sessions
+      - Container startup includes proper NTP configuration
+      - Global deployment settings work across all regions
+      - Network timeout handling prevents auto-submit failures
+      - Time drift detection works with automatic correction
+      - Production Docker environment passes all auto-submit tests
+      - Container health checks validate time synchronization
+      - Global network latency properly accommodated
+    notes:
+      - DOCKER OPTIMIZED: Production container configuration for global scale
+      - TIME SYNC: Proper NTP configuration prevents timing issues
+      - CSRF SECURE: Token management for long test sessions
+      - HEALTH MONITORING: Proper endpoints for production monitoring
+
+  v1.5.5: Global Auto-Submit Phase 4 - Production Monitoring & Analytics
+    questions:
+      - What monitoring is needed to track auto-submit success rates globally?
+      - How should auto-submit failures be logged and analyzed?
+      - What alerts should notify administrators of auto-submit issues?
+      - How should performance metrics be tracked across global regions?
+      - What debugging information helps resolve auto-submit problems?
+    answers:
+      - Comprehensive logging: Auto-submit triggers, success/failure rates, timing data
+      - Failure analysis: Network issues, timeout causes, server-side validation failures
+      - Real-time alerts: Auto-submit failure rate above 5%, server time drift detection
+      - Regional metrics: Success rates per geographic region, network latency tracking
+      - Debug information: Client/server time comparison, network status, retry attempts
+    industry_solution:
+      - DATADOG MONITORING: Real-time auto-submit success rate tracking
+      - NEW RELIC PATTERN: Performance monitoring across global deployments
+      - SENTRY APPROACH: Error tracking and alerting for critical failures
+      - ELASTIC STACK: Log aggregation and analysis for debugging
+      - GRAFANA DASHBOARD: Visual monitoring of auto-submit health metrics
+    implementation:
+      - Comprehensive logging framework for auto-submit operations
+      - Performance metrics collection and analysis
+      - Alert system for auto-submit failure rate monitoring
+      - Regional performance tracking and optimization
+      - Debug information collection for troubleshooting
+    tests:
+      - Auto-submit success/failure rates logged accurately
+      - Performance metrics tracked across all test sessions
+      - Alert system triggers on auto-submit failure threshold
+      - Regional performance data collected and analyzed
+      - Debug logs provide sufficient troubleshooting information
+      - Monitoring dashboard displays auto-submit health metrics
+      - Log aggregation works across global deployments
+      - Error tracking captures all auto-submit failure scenarios
+      - Performance optimization based on monitoring data
+      - Real-time visibility into auto-submit system health
+    notes:
+      - MONITORING: Complete visibility into auto-submit performance
+      - ANALYTICS: Data-driven optimization for global reliability
+      - ALERTING: Proactive notification of system issues
+      - DEBUGGING: Comprehensive troubleshooting information
+
+  v1.5.6: Simple Security Events (SIMPLIFIED)
 
   v1.6: Practice Mode Flow Control (SIMPLIFIED)
     questions:

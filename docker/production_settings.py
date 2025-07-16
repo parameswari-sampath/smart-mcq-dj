@@ -145,9 +145,9 @@ CACHES = {
     }
 }
 
-# Time zone
+# Time zone - UTC for global compatibility
 USE_TZ = True
-TIME_ZONE = 'Asia/Kolkata'
+TIME_ZONE = 'UTC'  # Changed to UTC for global application
 
 # Email configuration (for future use)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Console for now

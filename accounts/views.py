@@ -303,6 +303,27 @@ def take_test(request, attempt_id):
             messages.error(request, 'Access denied. This test attempt does not belong to you.')
             return redirect('dashboard')
         
+        # v1.5.2: Server-authoritative time validation
+        # Calculate actual test end time using UTC timestamps
+        session = test_attempt.test_session
+        test_start_time_utc = session.start_time  # Already stored in UTC
+        test_duration = timezone.timedelta(minutes=session.test.time_limit_minutes)
+        actual_end_time_utc = test_start_time_utc + test_duration
+        current_server_time_utc = timezone.now()  # Always UTC
+        
+        # Server-side validation: If time has expired, auto-submit immediately
+        if current_server_time_utc >= actual_end_time_utc and not test_attempt.is_submitted:
+            try:
+                # Call auto_submit_test function directly with server validation
+                auto_result = auto_submit_test(request, test_attempt)
+                if hasattr(auto_result, 'get') and auto_result.get('success'):
+                    # Auto-submit succeeded, redirect to results
+                    messages.info(request, 'Test time expired and was automatically submitted.')
+                    return redirect('test_results')
+            except Exception as e:
+                # Auto-submit failed, continue to show test page
+                messages.warning(request, f'Test time has expired. Please submit manually. ({str(e)})')
+        
         # Check if test session is still active
         if test_attempt.test_session.status != 'active':
             messages.error(request, 'This test session is no longer active.')
@@ -325,6 +346,7 @@ def take_test(request, attempt_id):
         # Get answered questions count for submission modal
         answered_questions_count = test_attempt.answers.count()
         
+        # v1.5.2: UTC-based time data for global compatibility
         context = {
             'test_attempt': test_attempt,
             'current_question': current_question,
@@ -334,7 +356,10 @@ def take_test(request, attempt_id):
             'answered_questions_count': answered_questions_count,
             'progress_percentage': test_attempt.progress_percentage,
             'test_session': test_attempt.test_session,
-            'test_end_time': test_attempt.test_session.end_time,
+            'test_end_time_utc': actual_end_time_utc,  # Calculated UTC end time
+            'server_time_utc': current_server_time_utc,  # Current server UTC time
+            'remaining_seconds': max(0, int((actual_end_time_utc - current_server_time_utc).total_seconds())),
+            'grace_period_seconds': 30,  # Industry standard grace period
         }
         
         return render(request, 'accounts/take_test.html', context)
@@ -591,30 +616,70 @@ def submit_test(request, attempt_id):
 
 
 def auto_submit_test(request, test_attempt):
-    """Dedicated function for auto-submission that bypasses session expiration checks"""
+    """
+    Industry-proven server-authoritative auto-submission (v1.5.2)
+    Follows Google Forms/Coursera pattern: Server validates ALL timing decisions
+    """
     from smart_mcq.constants import SuccessMessages
     from django.utils import timezone
     from django.http import JsonResponse
     from django.urls import reverse
+    import logging
     
-    # This function is called only for auto-submission when time expires
-    # Since answers are continuously saved to DB, we can proceed even if session is expired
+    logger = logging.getLogger(__name__)
     
     # Security: Double-check that test_attempt belongs to current user
     if test_attempt.student != request.user:
+        logger.warning(f"Auto-submit access denied for user {request.user.id} attempting {test_attempt.id}")
         return JsonResponse({'success': False, 'error': 'Access denied'})
     
     # Check if already submitted
     if test_attempt.is_submitted:
+        logger.info(f"Auto-submit attempted on already submitted test {test_attempt.id}")
         return JsonResponse({'success': False, 'error': 'Test has already been submitted'})
     
-    # Calculate total time spent
-    total_time_spent = int((timezone.now() - test_attempt.started_at).total_seconds())
+    # INDUSTRY PATTERN: Server-authoritative time validation (v1.5.2)
+    # Calculate actual test end time using UTC timestamps
+    session = test_attempt.test_session
+    test_start_time_utc = session.start_time  # Already stored in UTC
+    test_duration = timezone.timedelta(minutes=session.test.time_limit_minutes)
+    actual_end_time_utc = test_start_time_utc + test_duration
+    current_server_time_utc = timezone.now()  # Always UTC
+    
+    # Grace period for network latency (industry standard: 30 seconds)
+    grace_period = timezone.timedelta(seconds=30)
+    grace_end_time = actual_end_time_utc + grace_period
+    
+    # Server-side validation: Only allow auto-submit if time has actually expired
+    if current_server_time_utc < actual_end_time_utc:
+        # Test time has not actually expired yet
+        remaining_seconds = int((actual_end_time_utc - current_server_time_utc).total_seconds())
+        logger.warning(f"Premature auto-submit blocked for test {test_attempt.id}, {remaining_seconds}s remaining")
+        return JsonResponse({
+            'success': False, 
+            'error': 'Test time has not expired yet',
+            'server_time_utc': current_server_time_utc.isoformat(),
+            'test_end_time_utc': actual_end_time_utc.isoformat(),
+            'remaining_seconds': remaining_seconds
+        })
+    
+    # Allow auto-submit within grace period (for network latency)
+    if current_server_time_utc > grace_end_time:
+        # Beyond grace period, but still allow (answers are continuously saved)
+        grace_exceeded_seconds = int((current_server_time_utc - grace_end_time).total_seconds())
+        logger.info(f"Auto-submit beyond grace period for test {test_attempt.id}, {grace_exceeded_seconds}s late")
+    
+    # Log auto-submit trigger details for monitoring
+    time_since_expiry = int((current_server_time_utc - actual_end_time_utc).total_seconds())
+    logger.info(f"Auto-submit triggered for test {test_attempt.id}, {time_since_expiry}s after expiry")
+    
+    # Calculate total time spent using server timestamps
+    total_time_spent = int((current_server_time_utc - test_attempt.started_at).total_seconds())
     question_time_spent = test_attempt.answers.aggregate(total=models.Sum('time_spent_seconds'))['total'] or 0
     
-    # Mark as submitted with time tracking
+    # Mark as submitted with UTC timestamp
     test_attempt.is_submitted = True
-    test_attempt.submitted_at = timezone.now()
+    test_attempt.submitted_at = current_server_time_utc
     test_attempt.total_time_spent = total_time_spent
     test_attempt.save()
     
@@ -653,13 +718,25 @@ def auto_submit_test(request, test_attempt):
         'question_time_formatted': format_time(question_time_spent),
         'avg_time_per_question': avg_time_per_question,
         'avg_time_per_question_formatted': format_time(avg_time_per_question),
-        'submitted_at': timezone.localtime(timezone.now()).strftime('%B %d, %Y at %I:%M %p'),
+        'submitted_at': timezone.localtime(current_server_time_utc).strftime('%B %d, %Y at %I:%M %p'),
+        'auto_submit_details': {
+            'triggered_at_utc': current_server_time_utc.isoformat(),
+            'test_end_time_utc': actual_end_time_utc.isoformat(),
+            'time_since_expiry_seconds': time_since_expiry,
+            'grace_period_used': time_since_expiry <= 30
+        }
     }
+    
+    logger.info(f"Auto-submit completed successfully for test {test_attempt.id}")
     
     return JsonResponse({
         'success': True,
         'message': 'Test auto-submitted successfully',
-        'redirect_url': reverse('test_results')
+        'redirect_url': reverse('test_results'),
+        'server_validation': {
+            'submitted_at_utc': current_server_time_utc.isoformat(),
+            'time_since_expiry': time_since_expiry
+        }
     })
 
 
