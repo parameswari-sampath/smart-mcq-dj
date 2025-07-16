@@ -507,39 +507,85 @@ document.addEventListener('DOMContentLoaded', function() {
         return attemptFetch();
     }
     
-    // CSRF token refresh for long-running test sessions
+    // Enhanced CSRF token validation and refresh for long-running test sessions
     async function getValidCSRFToken() {
         try {
-            // Try to get a fresh CSRF token
-            const response = await fetch('{% url "save_answer" test_attempt.id %}', {
+            const currentToken = getCookie('csrftoken');
+            
+            if (!currentToken) {
+                autoSubmitLogger.log('ERROR', 'No CSRF token found in cookies');
+                throw new Error('No CSRF token available');
+            }
+            
+            // First try to refresh the token using our dedicated endpoint
+            try {
+                const refreshResponse = await fetch('{% url "refresh_csrf_token" %}', {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-CSRFToken': currentToken
+                    }
+                });
+                
+                if (refreshResponse.ok) {
+                    const refreshData = await refreshResponse.json();
+                    if (refreshData.success && refreshData.csrf_token) {
+                        // Update the CSRF cookie with the new token
+                        document.cookie = `csrftoken=${refreshData.csrf_token}; path=/; SameSite=Lax`;
+                        
+                        autoSubmitLogger.log('INFO', 'CSRF token refreshed successfully', {
+                            old_token_length: currentToken.length,
+                            new_token_length: refreshData.csrf_token.length
+                        });
+                        
+                        return refreshData.csrf_token;
+                    }
+                }
+            } catch (refreshError) {
+                autoSubmitLogger.log('WARN', 'CSRF refresh endpoint failed, trying validation', {
+                    error: refreshError.message
+                });
+            }
+            
+            // If refresh failed, try to validate current token with a simple GET request
+            const validationResponse = await fetch('{% url "save_answer" test_attempt.id %}', {
                 method: 'GET',
                 headers: {
-                    'X-CSRFToken': getCookie('csrftoken')
+                    'X-CSRFToken': currentToken
                 }
             });
             
-            if (response.ok) {
-                // If the request succeeds, the current token is still valid
-                return getCookie('csrftoken');
-            } else if (response.status === 403) {
-                // CSRF token is stale, try to refresh the page silently to get new token
-                console.warn('CSRF token expired, attempting to refresh...');
-                window.location.reload();
-                return null;
+            if (validationResponse.ok) {
+                // Current token is still valid
+                autoSubmitLogger.log('INFO', 'Current CSRF token validated successfully');
+                return currentToken;
+            } else if (validationResponse.status === 403) {
+                // Token is expired and we couldn't refresh it
+                autoSubmitLogger.log('ERROR', 'CSRF token expired and refresh failed - triggering page reload');
+                throw new Error('CSRF token expired and refresh failed');
             }
+            
+            // Use current token as fallback
+            autoSubmitLogger.log('WARN', 'Using current token as fallback after validation failed');
+            return currentToken;
+            
         } catch (error) {
-            console.warn('CSRF token validation failed:', error);
+            autoSubmitLogger.log('ERROR', 'CSRF token validation completely failed', {
+                error_message: error.message,
+                will_reload_page: true
+            });
+            
+            // As absolute last resort, reload the page to get fresh tokens
+            console.error('CSRF token validation failed, reloading page:', error);
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+            
+            throw error;
         }
-        
-        // Fallback to current token
-        const fallbackToken = getCookie('csrftoken');
-        autoSubmitLogger.log('WARN', 'Using fallback CSRF token', {
-            fallback_token_present: !!fallbackToken
-        });
-        return fallbackToken;
     }
     
-    // v1.5.2: Display-only timer (server controls actual auto-submit)
+    // v1.5.2: Display-only timer with server-authoritative validation
     function updateTimer() {
         if (testSubmitted) {
             autoSubmitLogger.log('DEBUG', 'Timer update skipped - test already submitted');
@@ -563,19 +609,32 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         
-        // Trigger client-side auto-submit attempt (server will validate)
-        if (estimatedRemainingSeconds <= 0) {
-            autoSubmitLogger.log('WARN', 'Client timer expired - triggering auto-submit', {
+        // CRITICAL FIX: Only trigger auto-submit if we're truly confident time has expired
+        // Add buffer to account for network latency and server-client time differences
+        const autoSubmitBuffer = 10; // 10 second buffer to prevent premature submissions
+        
+        if (estimatedRemainingSeconds <= -autoSubmitBuffer) {
+            autoSubmitLogger.log('WARN', 'Client timer expired with buffer - triggering auto-submit', {
                 estimatedRemainingSeconds: estimatedRemainingSeconds,
                 serverRemainingSeconds: serverRemainingSeconds,
                 elapsedSeconds: elapsedSeconds,
+                autoSubmitBuffer: autoSubmitBuffer,
                 currentTime: new Date().toISOString(),
                 testEndTime: testEndTimeUTC.toISOString(),
                 autoSubmitAttempts: autoSubmitAttempts,
-                testSubmitted: testSubmitted
+                testSubmitted: testSubmitted,
+                decision: 'TRIGGER_AUTO_SUBMIT'
             });
             autoSubmitTest();
             return;
+        } else if (estimatedRemainingSeconds <= 0) {
+            // Time appears expired but within buffer - show warning but don't auto-submit yet
+            autoSubmitLogger.log('INFO', 'Client timer at zero but within safety buffer', {
+                estimatedRemainingSeconds: estimatedRemainingSeconds,
+                autoSubmitBuffer: autoSubmitBuffer,
+                bufferRemaining: autoSubmitBuffer + estimatedRemainingSeconds,
+                decision: 'WAIT_FOR_BUFFER'
+            });
         }
         
         // Calculate minutes and seconds for display
@@ -1006,6 +1065,11 @@ document.addEventListener('DOMContentLoaded', function() {
             this.csrfRefreshInterval = setInterval(() => {
                 this.refreshCSRFPreventively();
             }, 600000); // 10 minutes
+            
+            // Sync server time every 2 minutes for accurate remaining time
+            this.timeSyncInterval = setInterval(() => {
+                this.syncServerTime();
+            }, 120000); // 2 minutes
         },
         
         stop() {
@@ -1016,6 +1080,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (this.csrfRefreshInterval) {
                 clearInterval(this.csrfRefreshInterval);
                 this.csrfRefreshInterval = null;
+            }
+            if (this.timeSyncInterval) {
+                clearInterval(this.timeSyncInterval);
+                this.timeSyncInterval = null;
             }
         },
         
@@ -1048,6 +1116,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(error => {
                     console.warn('Preventive CSRF token refresh failed:', error);
                 });
+        },
+        
+        // Sync server time to get accurate remaining time
+        syncServerTime() {
+            if (testSubmitted) return;
+            
+            const startTime = Date.now();
+            
+            fetch('{% url "save_answer" test_attempt.id %}', {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    const networkLatency = (Date.now() - startTime) / 2; // Estimate round-trip time
+                    const serverTime = new Date(response.headers.get('Date'));
+                    
+                    if (serverTime) {
+                        // Calculate more accurate remaining time based on server time
+                        const timeElapsed = (serverTime.getTime() + networkLatency - testEndTimeUTC.getTime()) / 1000;
+                        const actualRemainingSeconds = Math.max(0, serverRemainingSeconds - timeElapsed);
+                        
+                        autoSubmitLogger.log('INFO', 'Server time sync completed', {
+                            server_time: serverTime.toISOString(),
+                            network_latency_ms: networkLatency,
+                            calculated_remaining: actualRemainingSeconds,
+                            original_remaining: serverRemainingSeconds
+                        });
+                        
+                        // Update server remaining time if the difference is significant
+                        if (Math.abs(actualRemainingSeconds - serverRemainingSeconds) > 5) {
+                            console.log(`Server time sync: updating remaining time from ${serverRemainingSeconds}s to ${actualRemainingSeconds}s`);
+                            serverRemainingSeconds = actualRemainingSeconds;
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.warn('Server time sync failed:', error);
+            });
         }
     };
     
