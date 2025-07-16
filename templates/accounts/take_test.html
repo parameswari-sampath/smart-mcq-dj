@@ -217,12 +217,79 @@ document.addEventListener('DOMContentLoaded', function() {
     let serverRemainingSeconds = {{ remaining_seconds }};
     const gracePeriodSeconds = {{ grace_period_seconds }};
     
-    console.log('v1.5.2 Server-Authoritative Timer:', {
+    // AUTO-SUBMIT DEBUG LOGGING SYSTEM
+    const autoSubmitLogger = {
+        logLevel: 'DEBUG', // DEBUG, INFO, WARN, ERROR
+        sessionId: `${attemptId}_${Date.now()}`,
+        
+        log: function(level, message, data = {}) {
+            const timestamp = new Date().toISOString();
+            const logEntry = {
+                timestamp: timestamp,
+                level: level,
+                session: this.sessionId,
+                attempt_id: attemptId,
+                message: message,
+                data: data,
+                user_agent: navigator.userAgent,
+                url: window.location.href
+            };
+            
+            // Always log to console for debugging
+            console.log(`[AUTO-SUBMIT-${level}] ${timestamp} - ${message}`, data);
+            
+            // Send critical logs to server for analysis
+            if (level === 'ERROR' || level === 'WARN' || message.includes('auto-submit')) {
+                this.sendToServer(logEntry);
+            }
+            
+            // Store in localStorage for analysis
+            this.storeLocally(logEntry);
+        },
+        
+        sendToServer: function(logEntry) {
+            try {
+                fetch('{% url "save_answer" test_attempt.id %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'X-Log-Entry': 'true'
+                    },
+                    body: JSON.stringify({
+                        log_entry: logEntry,
+                        log_type: 'auto_submit_debug'
+                    })
+                }).catch(err => {
+                    console.error('Failed to send log to server:', err);
+                });
+            } catch (error) {
+                console.error('Error sending log to server:', error);
+            }
+        },
+        
+        storeLocally: function(logEntry) {
+            try {
+                const logs = JSON.parse(localStorage.getItem('autoSubmitLogs') || '[]');
+                logs.push(logEntry);
+                // Keep only last 100 logs
+                if (logs.length > 100) {
+                    logs.splice(0, logs.length - 100);
+                }
+                localStorage.setItem('autoSubmitLogs', JSON.stringify(logs));
+            } catch (error) {
+                console.error('Failed to store log locally:', error);
+            }
+        }
+    };
+    
+    autoSubmitLogger.log('INFO', 'Timer initialization started', {
         testEndTimeUTC: testEndTimeUTC.toISOString(),
         serverTimeUTC: serverTimeUTC.toISOString(),
         serverRemainingSeconds: serverRemainingSeconds,
         gracePeriodSeconds: gracePeriodSeconds,
         userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        clientStartTime: clientStartTime.toISOString(),
         displayPurposeOnly: 'Client timer is for display only - server controls auto-submit'
     });
     
@@ -240,6 +307,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Track pending save operations to prevent race conditions
     let pendingSaves = 0;
+    
+    // Generate unique attempt ID for tracking auto-submit attempts
+    function generateAttemptId() {
+        return `auto_submit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
     let currentAnsweredCount = {{ answered_questions_count }};
     
     // Time tracking for current question
@@ -372,12 +444,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Fallback to current token
-        return getCookie('csrftoken');
+        const fallbackToken = getCookie('csrftoken');
+        autoSubmitLogger.log('WARN', 'Using fallback CSRF token', {
+            fallback_token_present: !!fallbackToken
+        });
+        return fallbackToken;
     }
     
     // v1.5.2: Display-only timer (server controls actual auto-submit)
     function updateTimer() {
-        if (testSubmitted) return;
+        if (testSubmitted) {
+            autoSubmitLogger.log('DEBUG', 'Timer update skipped - test already submitted');
+            return;
+        }
         
         // Calculate elapsed time since page load
         const elapsedSeconds = Math.floor((new Date() - clientStartTime) / 1000);
@@ -385,19 +464,28 @@ document.addEventListener('DOMContentLoaded', function() {
         // Calculate estimated remaining time (display purpose only)
         const estimatedRemainingSeconds = Math.max(0, serverRemainingSeconds - elapsedSeconds);
         
-        // Debug logging for troubleshooting (less frequent to reduce noise)
+        // Enhanced logging for troubleshooting
         if (estimatedRemainingSeconds <= 60 && estimatedRemainingSeconds % 10 === 0) {
-            console.log('v1.5.2 Display Timer (Final Minute):', {
+            autoSubmitLogger.log('DEBUG', 'Timer update - final minute countdown', {
                 estimatedRemainingSeconds: estimatedRemainingSeconds,
                 serverProvidedRemaining: serverRemainingSeconds,
                 elapsedSincePageLoad: elapsedSeconds,
-                note: 'Display only - server controls actual auto-submit timing'
+                currentTime: new Date().toISOString(),
+                testEndTimeUTC: testEndTimeUTC.toISOString()
             });
         }
         
         // Trigger client-side auto-submit attempt (server will validate)
         if (estimatedRemainingSeconds <= 0) {
-            console.log('⏰ Client timer expired - attempting auto-submit (server will validate)');
+            autoSubmitLogger.log('WARN', 'Client timer expired - triggering auto-submit', {
+                estimatedRemainingSeconds: estimatedRemainingSeconds,
+                serverRemainingSeconds: serverRemainingSeconds,
+                elapsedSeconds: elapsedSeconds,
+                currentTime: new Date().toISOString(),
+                testEndTime: testEndTimeUTC.toISOString(),
+                autoSubmitAttempts: autoSubmitAttempts,
+                testSubmitted: testSubmitted
+            });
             autoSubmitTest();
             return;
         }
@@ -468,11 +556,34 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     async function autoSubmitTest() {
+        const attemptId = generateAttemptId();
+        
+        autoSubmitLogger.log('INFO', 'Auto-submit initiated', {
+            attempt_id: attemptId,
+            current_attempts: autoSubmitAttempts,
+            max_attempts: maxAutoSubmitAttempts,
+            test_submitted: testSubmitted,
+            timer_interval_active: timerInterval !== null,
+            client_time: new Date().toISOString(),
+            remaining_seconds: serverRemainingSeconds
+        });
+        
         // Prevent multiple simultaneous auto-submit attempts
-        if (testSubmitted) return;
+        if (testSubmitted) {
+            autoSubmitLogger.log('WARN', 'Auto-submit blocked: already submitted', {
+                attempt_id: attemptId,
+                test_submitted: testSubmitted
+            });
+            return;
+        }
         
         // Check attempt limit for exponential backoff
         if (autoSubmitAttempts >= maxAutoSubmitAttempts) {
+            autoSubmitLogger.log('ERROR', 'Max auto-submit attempts reached', {
+                attempt_id: attemptId,
+                attempts: autoSubmitAttempts,
+                max_attempts: maxAutoSubmitAttempts
+            });
             console.error('Max auto-submit attempts reached. Enabling manual submission.');
             showWarningAlert('Auto-submit failed multiple times. Please submit manually.', 'danger');
             enableManualSubmission();
@@ -481,6 +592,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // CRITICAL FIX: Always clear timer interval first to prevent multiple triggers
         if (timerInterval) {
+            autoSubmitLogger.log('INFO', 'Clearing timer interval', {
+                attempt_id: attemptId,
+                timer_was_active: true
+            });
             clearInterval(timerInterval);
             timerInterval = null;
         }
@@ -488,7 +603,19 @@ document.addEventListener('DOMContentLoaded', function() {
         testSubmitted = true;
         autoSubmitAttempts++;
         
+        autoSubmitLogger.log('INFO', 'Auto-submit state updated', {
+            attempt_id: attemptId,
+            test_submitted: testSubmitted,
+            attempt_number: autoSubmitAttempts
+        });
+        
         console.log(`🚀 Auto-submit attempt ${autoSubmitAttempts}/${maxAutoSubmitAttempts} - Server will validate timing`);
+        
+        autoSubmitLogger.log('INFO', 'UI state preparation', {
+            attempt_id: attemptId,
+            timer_display: timerText.textContent,
+            inputs_to_disable: document.querySelectorAll('input, button').length
+        });
         
         saveTimerState();
         timerText.textContent = '00:00';
@@ -501,22 +628,61 @@ document.addEventListener('DOMContentLoaded', function() {
         const allInputs = document.querySelectorAll('input, button');
         allInputs.forEach(input => input.disabled = true);
         
+        autoSubmitLogger.log('INFO', 'UI elements disabled', {
+            attempt_id: attemptId,
+            disabled_elements: allInputs.length
+        });
+        
         try {
+            autoSubmitLogger.log('INFO', 'Getting CSRF token', {
+                attempt_id: attemptId,
+                current_token: getCookie('csrftoken') ? 'present' : 'missing'
+            });
+            
             // Get fresh CSRF token for long-running sessions
             const csrfToken = await getValidCSRFToken();
             
             if (!csrfToken) {
+                autoSubmitLogger.log('ERROR', 'CSRF token refresh failed - page reload triggered', {
+                    attempt_id: attemptId
+                });
                 // CSRF refresh triggered page reload
                 return;
             }
+            
+            autoSubmitLogger.log('INFO', 'CSRF token validated', {
+                attempt_id: attemptId,
+                token_length: csrfToken.length
+            });
             
             // Calculate exponential backoff delay for retry attempts
             const retryDelay = autoSubmitAttempts > 1 ? Math.pow(2, autoSubmitAttempts - 1) * 1000 : 0;
             
             if (retryDelay > 0) {
+                autoSubmitLogger.log('INFO', 'Applying exponential backoff', {
+                    attempt_id: attemptId,
+                    delay_ms: retryDelay,
+                    attempt_number: autoSubmitAttempts
+                });
                 console.log(`Waiting ${retryDelay}ms before retry...`);
                 await new Promise(resolve => setTimeout(resolve, retryDelay));
             }
+            
+            const requestPayload = {
+                auto_submit: true,
+                client_timestamp: new Date().toISOString(),
+                trigger_source: `client_timer_v1.5.2_attempt_${autoSubmitAttempts}`,
+                attempt_number: autoSubmitAttempts,
+                attempt_id: attemptId
+            };
+            
+            autoSubmitLogger.log('INFO', 'Sending auto-submit request', {
+                attempt_id: attemptId,
+                url: `{% url 'submit_test' test_attempt.id %}`,
+                method: 'POST',
+                payload: requestPayload,
+                csrf_token_present: !!csrfToken
+            });
             
             // Auto-submit attempt with fresh token
             const response = await fetch(`{% url 'submit_test' test_attempt.id %}`, {
@@ -525,29 +691,62 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken
                 },
-                body: JSON.stringify({
-                    auto_submit: true,
-                    client_timestamp: new Date().toISOString(),
-                    trigger_source: `client_timer_v1.5.2_attempt_${autoSubmitAttempts}`,
-                    attempt_number: autoSubmitAttempts
-                })
+                body: JSON.stringify(requestPayload)
+            });
+            
+            autoSubmitLogger.log('INFO', 'Received response', {
+                attempt_id: attemptId,
+                status: response.status,
+                status_text: response.statusText,
+                ok: response.ok,
+                headers: {
+                    content_type: response.headers.get('content-type')
+                }
             });
             
             const data = await response.json();
             console.log('Auto-submit response:', data);
             
+            autoSubmitLogger.log('INFO', 'Response data parsed', {
+                attempt_id: attemptId,
+                response_data: data,
+                success: data.success,
+                error: data.error
+            });
+            
             if (data.success) {
                 // Server validated and accepted auto-submit
+                autoSubmitLogger.log('INFO', 'Auto-submit successful - redirecting', {
+                    attempt_id: attemptId,
+                    redirect_url: data.redirect_url || '{% url "dashboard" %}',
+                    attempt_number: autoSubmitAttempts,
+                    total_attempts: autoSubmitAttempts,
+                    success: true
+                });
                 console.log('✅ Server validated auto-submit successful');
                 localStorage.removeItem(timerKey); // Clear timer state on success
                 window.location.href = data.redirect_url || '{% url "dashboard" %}';
                 return;
             } else {
                 // Server rejected auto-submit
+                autoSubmitLogger.log('WARN', 'Server rejected auto-submit', {
+                    attempt_id: attemptId,
+                    error: data.error,
+                    remaining_seconds: data.remaining_seconds,
+                    attempt_number: autoSubmitAttempts,
+                    server_response: data
+                });
                 console.warn('⚠️ Server rejected auto-submit:', data.error);
                 
                 if (data.remaining_seconds && data.remaining_seconds > 0) {
                     // Time hasn't actually expired yet - restart timer with server time
+                    autoSubmitLogger.log('INFO', 'Server time validation - restarting timer', {
+                        attempt_id: attemptId,
+                        server_remaining_seconds: data.remaining_seconds,
+                        client_remaining_seconds: serverRemainingSeconds,
+                        time_difference: data.remaining_seconds - serverRemainingSeconds,
+                        action: 'restart_timer'
+                    });
                     console.log(`Server says ${data.remaining_seconds}s remaining. Restarting timer.`);
                     showWarningAlert(`Server validation: ${data.remaining_seconds}s remaining. Restarting timer.`, 'warning');
                     
@@ -561,6 +760,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                 } else {
                     // Real error - try again with exponential backoff
+                    autoSubmitLogger.log('ERROR', 'Auto-submit failed - scheduling retry', {
+                        attempt_id: attemptId,
+                        error: data.error,
+                        current_attempts: autoSubmitAttempts,
+                        max_attempts: maxAutoSubmitAttempts,
+                        will_retry: autoSubmitAttempts < maxAutoSubmitAttempts
+                    });
                     console.error('Auto-submit failed:', data.error);
                     showWarningAlert(`Auto-submit failed: ${data.error}. Retrying...`, 'warning');
                     
@@ -579,11 +785,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
         } catch (error) {
+            autoSubmitLogger.log('ERROR', 'Auto-submit network error', {
+                attempt_id: attemptId,
+                error_message: error.message,
+                error_name: error.name,
+                error_stack: error.stack,
+                attempt_number: autoSubmitAttempts,
+                max_attempts: maxAutoSubmitAttempts,
+                network_status: navigator.onLine ? 'online' : 'offline',
+                will_retry: autoSubmitAttempts < maxAutoSubmitAttempts
+            });
             console.error('Auto-submit network error:', error);
             
             // Network error - retry with exponential backoff
             if (autoSubmitAttempts < maxAutoSubmitAttempts) {
                 const retryDelay = Math.pow(2, autoSubmitAttempts) * 1000; // 2s, 4s, 8s
+                autoSubmitLogger.log('INFO', 'Network error - scheduling retry with exponential backoff', {
+                    attempt_id: attemptId,
+                    retry_delay_ms: retryDelay,
+                    retry_delay_seconds: retryDelay / 1000,
+                    current_attempts: autoSubmitAttempts,
+                    max_attempts: maxAutoSubmitAttempts
+                });
                 showWarningAlert(`Network error. Retrying in ${retryDelay/1000}s... (${autoSubmitAttempts}/${maxAutoSubmitAttempts})`, 'warning');
                 
                 // Re-enable inputs temporarily
@@ -593,13 +816,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 testSubmitted = false; // Allow retry
                 setTimeout(() => autoSubmitTest(), retryDelay);
             } else {
+                autoSubmitLogger.log('ERROR', 'Max attempts reached after network errors', {
+                    attempt_id: attemptId,
+                    final_attempt: autoSubmitAttempts,
+                    error_type: 'network_error'
+                });
+                
                 showWarningAlert('Network error during auto-submit. Please submit manually.', 'danger');
                 enableManualSubmission();
             }
         }
+        
+        autoSubmitLogger.log('INFO', 'Auto-submit function completed', {
+            attempt_id: attemptId,
+            final_state: {
+                test_submitted: testSubmitted,
+                attempts_used: autoSubmitAttempts
+            }
+        });
     }
     
     function restartTimerWithServerTime() {
+        autoSubmitLogger.log('INFO', 'Restarting timer with server time', {
+            server_remaining_seconds: serverRemainingSeconds,
+            previous_test_submitted: testSubmitted,
+            timer_interval_active: timerInterval !== null
+        });
+        
         // Reset timer state but keep testSubmitted = true to prevent race conditions
         testSubmitted = false;
         warningShown5min = false;
@@ -608,9 +851,22 @@ document.addEventListener('DOMContentLoaded', function() {
         // Restart timer with server-provided remaining time
         timerInterval = setInterval(updateTimer, 1000);
         console.log('Timer restarted with server time');
+        
+        autoSubmitLogger.log('INFO', 'Timer restart completed', {
+            new_test_submitted: testSubmitted,
+            timer_interval_active: timerInterval !== null,
+            warnings_reset: true
+        });
     }
     
     function enableManualSubmission() {
+        autoSubmitLogger.log('WARN', 'Enabling manual submission fallback', {
+            auto_submit_attempts: autoSubmitAttempts,
+            max_attempts: maxAutoSubmitAttempts,
+            timer_interval_active: timerInterval !== null,
+            test_submitted: testSubmitted
+        });
+        
         // Final fallback - enable manual submission
         testSubmitted = true; // Prevent further auto-submit attempts
         if (timerInterval) {
@@ -630,6 +886,12 @@ document.addEventListener('DOMContentLoaded', function() {
         allInputs.forEach(input => input.disabled = false);
         
         timerText.textContent = 'TIME UP';
+        
+        autoSubmitLogger.log('INFO', 'Manual submission enabled', {
+            submit_button_enabled: submitBtn ? true : false,
+            inputs_enabled: allInputs.length,
+            timer_display: timerText.textContent
+        });
     }
     
     // Start timer
