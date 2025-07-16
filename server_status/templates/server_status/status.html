@@ -306,6 +306,93 @@
                             {% endfor %}
                         {% endif %}
                     </div>
+                    
+                    <!-- SERVER TIMING INFORMATION FOR AUTO-SUBMIT DEBUGGING -->
+                    <div class="stat-card">
+                        <h3>⏰ Server Timing (Auto-Submit Debug)</h3>
+                        {% if timing_info %}
+                            <div class="stat-item">
+                                <span class="stat-label">Current UTC Time</span>
+                                <span class="stat-value">{{ timing_info.current_utc_formatted }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Server Local Time</span>
+                                <span class="stat-value">{{ timing_info.server_local_formatted }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Server Timezone</span>
+                                <span class="stat-value">{{ timing_info.server_timezone }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Django TIME_ZONE</span>
+                                <span class="stat-value">{{ timing_info.django_timezone_setting }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Django USE_TZ</span>
+                                <span class="stat-value" style="color: {% if timing_info.django_use_tz %}#28a745{% else %}#dc3545{% endif %}">
+                                    {{ timing_info.django_use_tz }}
+                                </span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Unix Timestamp</span>
+                                <span class="stat-value">{{ timing_info.timestamp_unix }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">JS Timestamp (ms)</span>
+                                <span class="stat-value">{{ timing_info.timestamp_ms }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- TIMEZONE COMPARISON -->
+                    <div class="stat-card">
+                        <h3>🌍 Timezone Comparison</h3>
+                        {% if timezone_comparison %}
+                            {% for tz_name, tz_info in timezone_comparison.items %}
+                                <div class="stat-item">
+                                    <span class="stat-label">{{ tz_name }}</span>
+                                    <span class="stat-value">
+                                        {% if tz_info.error %}
+                                            <span style="color: #dc3545;">{{ tz_info.error }}</span>
+                                        {% else %}
+                                            {{ tz_info.time }} ({{ tz_info.offset }})
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    
+                    <!-- REQUEST INFORMATION -->
+                    <div class="stat-card">
+                        <h3>🌐 Request Information</h3>
+                        {% if request_info %}
+                            <div class="stat-item">
+                                <span class="stat-label">Remote Address</span>
+                                <span class="stat-value">{{ request_info.remote_addr }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">X-Forwarded-For</span>
+                                <span class="stat-value">{{ request_info.http_x_forwarded_for }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">X-Real-IP</span>
+                                <span class="stat-value">{{ request_info.http_x_real_ip }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Server Name</span>
+                                <span class="stat-value">{{ request_info.server_name }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Server Port</span>
+                                <span class="stat-value">{{ request_info.server_port }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Request Time</span>
+                                <span class="stat-value">{{ request_info.request_time }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
             {% endif %}
             
