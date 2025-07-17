@@ -17,46 +17,6 @@ import logging
 import os
 from datetime import datetime
 
-# Configure auto-submit logger
-auto_submit_logger = logging.getLogger('auto_submit')
-auto_submit_logger.setLevel(logging.DEBUG)
-
-# Create logs directory if it doesn't exist
-logs_dir = 'logs'
-if not os.path.exists(logs_dir):
-    try:
-        os.makedirs(logs_dir, exist_ok=True)
-    except Exception as e:
-        print(f"Warning: Could not create logs directory: {e}")
-        # Fall back to current directory
-        logs_dir = '.'
-
-# Create file handler for auto-submit logs
-log_file = os.path.join(logs_dir, f'auto_submit_{datetime.now().strftime("%Y_%m_%d")}.log')
-try:
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setLevel(logging.DEBUG)
-except Exception as e:
-    print(f"Warning: Could not create log file handler: {e}")
-    # Use console handler only
-    file_handler = None
-
-# Create console handler for immediate feedback
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-
-# Create formatter
-formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-
-# Add handlers to logger
-if file_handler:
-    file_handler.setFormatter(formatter)
-    auto_submit_logger.addHandler(file_handler)
-
-console_handler.setFormatter(formatter)
-auto_submit_logger.addHandler(console_handler)
 
 
 class CustomLoginView(LoginView):
@@ -347,24 +307,14 @@ def take_test(request, attempt_id):
             messages.error(request, 'Access denied. This test attempt does not belong to you.')
             return redirect('dashboard')
         
-        # v1.5.2: Server-authoritative time validation
-        # Use session's end_time property which includes +1 minute compensation for manual submission
+        # Check if test time has expired
         session = test_attempt.test_session
         actual_end_time_utc = session.end_time  # Uses end_time property with compensation
         current_server_time_utc = timezone.now()  # Always UTC
         
-        # Server-side validation: If time has expired, auto-submit immediately
+        # Server-side validation: If time has expired, show warning
         if current_server_time_utc >= actual_end_time_utc and not test_attempt.is_submitted:
-            try:
-                # Call auto_submit_test function directly with server validation
-                auto_result = auto_submit_test(request, test_attempt)
-                if hasattr(auto_result, 'get') and auto_result.get('success'):
-                    # Auto-submit succeeded, redirect to results
-                    messages.info(request, 'Test time expired and was automatically submitted.')
-                    return redirect('test_results')
-            except Exception as e:
-                # Auto-submit failed, continue to show test page
-                messages.warning(request, f'Test time has expired. Please submit manually. ({str(e)})')
+            messages.warning(request, 'Test time has expired. Please submit manually.')
         
         # Check if test session is still active
         if test_attempt.test_session.status != 'active':
@@ -388,7 +338,6 @@ def take_test(request, attempt_id):
         # Get answered questions count for submission modal
         answered_questions_count = test_attempt.answers.count()
         
-        # v1.5.2: UTC-based time data for global compatibility
         context = {
             'test_attempt': test_attempt,
             'current_question': current_question,
@@ -403,7 +352,6 @@ def take_test(request, attempt_id):
             # Show original test duration to user (without compensation minute)
             'test_end_time_original': session.start_time + timezone.timedelta(minutes=session.test.time_limit_minutes),
             'remaining_seconds': max(0, int((session.start_time + timezone.timedelta(minutes=session.test.time_limit_minutes) - current_server_time_utc).total_seconds())),
-            'grace_period_seconds': 30,  # Industry standard grace period
         }
         
         return render(request, 'accounts/take_test.html', context)
@@ -473,45 +421,15 @@ def save_answer(request, attempt_id):
             try:
                 data = json.loads(request.body)
                 
-                # Check if this is a log entry from frontend
+                # Skip old auto-submit logging entries
                 if 'log_entry' in data and data.get('log_type') == 'auto_submit_debug':
-                    log_entry = data['log_entry']
-                    log_level = log_entry.get('level', 'INFO')
-                    log_message = log_entry.get('message', '')
-                    log_data = log_entry.get('data', {})
-                    
-                    # Enhanced logging with comprehensive context
-                    log_context = {
-                        'user_id': request.user.id,
-                        'username': request.user.username,
-                        'attempt_id': attempt_id,
-                        'session_id': log_entry.get('session'),
-                        'timestamp': log_entry.get('timestamp'),
-                        'attempt_id_frontend': log_entry.get('attempt_id'),
-                        'user_agent': request.META.get('HTTP_USER_AGENT', ''),
-                        'remote_addr': request.META.get('REMOTE_ADDR', ''),
-                        'frontend_data': log_data,
-                        'url': request.get_full_path(),
-                        'method': request.method
-                    }
-                    
-                    # Log to our dedicated auto-submit logger
-                    logger_method = getattr(auto_submit_logger, log_level.lower(), auto_submit_logger.info)
-                    logger_method(f"FRONTEND_LOG: {log_message} | Context: {json.dumps(log_context, indent=2)}")
-                    
-                    # Also log critical events to console for immediate visibility
-                    if log_level in ['ERROR', 'WARN'] or 'auto-submit' in log_message.lower():
-                        print(f"[AUTO-SUBMIT-{log_level}] {log_message} | User: {request.user.username} | Attempt: {attempt_id}")
-                    
-                    return JsonResponse({'success': True, 'logged': True, 'log_level': log_level})
+                    return JsonResponse({'success': True, 'logged': False, 'message': 'Auto-submit logging disabled'})
                 
                 # Handle normal answer saving
                 question_id = data.get('question_id')
                 selected_choice = data.get('selected_choice')
                 time_spent_seconds = data.get('time_spent_seconds', 0)
                 
-                auto_submit_logger.debug(f"Answer save request: question_id={question_id}, choice={selected_choice}, time={time_spent_seconds}, user={request.user.username}")
-                print(f"DEBUG: Save answer request - question_id: {question_id}, choice: {selected_choice}, time: {time_spent_seconds}")
                 
                 # Validate inputs
                 if not question_id or not selected_choice:
@@ -526,8 +444,6 @@ def save_answer(request, attempt_id):
                 
                 # Get the question
                 question = test_attempt.test.questions.get(id=question_id)
-                auto_submit_logger.debug(f"Question found: {question.title}")
-                print(f"DEBUG: Found question: {question.title}")
                 
                 # Create or update answer
                 answer, created = Answer.objects.get_or_create(
@@ -544,8 +460,6 @@ def save_answer(request, attempt_id):
                     answer.time_spent_seconds = time_spent_seconds
                     answer.save()
                 
-                auto_submit_logger.debug(f"Answer saved: created={created}, choice={answer.selected_choice}, user={request.user.username}")
-                print(f"DEBUG: Answer saved - created: {created}, choice: {answer.selected_choice}")
                 
                 # Refresh test attempt to get updated progress
                 test_attempt.refresh_from_db()
@@ -558,8 +472,6 @@ def save_answer(request, attempt_id):
                 })
                 
             except Exception as e:
-                auto_submit_logger.error(f"Error in save_answer POST: {str(e)}, user={request.user.username}, attempt={attempt_id}")
-                print(f"DEBUG: Error in save_answer POST: {str(e)}")
                 return JsonResponse({'success': False, 'error': f'Server error: {str(e)}'})
         
         else:
@@ -605,15 +517,13 @@ def submit_test(request, attempt_id):
             messages.info(request, info_msg)
             return redirect('dashboard')
         
-        # Check if this is auto-submission - if so, use dedicated function
+        # Only handle manual submissions
         if is_json_request:
             try:
                 data = json.loads(request.body)
                 if data.get('auto_submit'):
-                    auto_submit_logger.info(f"SUBMIT_TEST_ROUTING_TO_AUTO: user={request.user.username}, attempt={attempt_id}")
-                    return auto_submit_test(request, test_attempt)
+                    return JsonResponse({'success': False, 'error': 'Auto-submit has been disabled'})
             except Exception as e:
-                auto_submit_logger.error(f"SUBMIT_TEST_JSON_ERROR: {str(e)}, user={request.user.username}, attempt={attempt_id}")
                 pass
         
         # For manual submissions, check if test session is still active
@@ -687,229 +597,18 @@ def submit_test(request, attempt_id):
         
     except TestAttempt.DoesNotExist:
         error_msg = 'Test attempt not found.'
-        auto_submit_logger.error(f"SUBMIT_TEST_NOT_FOUND: attempt={attempt_id}, user={request.user.username}")
         if request.content_type == 'application/json':
             return JsonResponse({'success': False, 'error': error_msg})
         messages.error(request, error_msg)
         return redirect('dashboard')
     except Exception as e:
         error_msg = f'Error submitting test: {str(e)}'
-        auto_submit_logger.error(f"SUBMIT_TEST_ERROR: {str(e)}, attempt={attempt_id}, user={request.user.username}")
         if request.content_type == 'application/json':
             return JsonResponse({'success': False, 'error': error_msg})
         messages.error(request, error_msg)
         return redirect('take_test', attempt_id=attempt_id)
 
 
-def auto_submit_test(request, test_attempt):
-    """
-    Industry-proven server-authoritative auto-submission (v1.5.2)
-    Follows Google Forms/Coursera pattern: Server validates ALL timing decisions
-    """
-    from smart_mcq.constants import SuccessMessages
-    from django.utils import timezone
-    from django.http import JsonResponse
-    from django.urls import reverse
-    import logging
-    import json
-    
-    logger = logging.getLogger(__name__)
-    
-    # COMPREHENSIVE AUTO-SUBMIT LOGGING
-    auto_submit_logger.info(f"AUTO_SUBMIT_SERVER_START: user={request.user.username}, attempt={test_attempt.id}")
-    
-    # Parse request data for logging
-    try:
-        request_data = json.loads(request.body) if request.body else {}
-        auto_submit_logger.info(f"AUTO_SUBMIT_REQUEST_DATA: {json.dumps(request_data, indent=2)}")
-    except json.JSONDecodeError as e:
-        auto_submit_logger.error(f"AUTO_SUBMIT_JSON_ERROR: {str(e)}")
-        request_data = {}
-    
-    # Log server environment context
-    server_context = {
-        'server_time_utc': timezone.now().isoformat(),
-        'user_id': request.user.id,
-        'username': request.user.username,
-        'attempt_id': test_attempt.id,
-        'test_id': test_attempt.test.id,
-        'test_title': test_attempt.test.title,
-        'user_agent': request.META.get('HTTP_USER_AGENT', ''),
-        'remote_addr': request.META.get('REMOTE_ADDR', ''),
-        'http_x_forwarded_for': request.META.get('HTTP_X_FORWARDED_FOR', ''),
-        'content_type': request.content_type,
-        'session_key': request.session.session_key,
-        'request_data': request_data
-    }
-    auto_submit_logger.info(f"AUTO_SUBMIT_SERVER_CONTEXT: {json.dumps(server_context, indent=2)}")
-    
-    # Security: Double-check that test_attempt belongs to current user
-    if test_attempt.student != request.user:
-        auto_submit_logger.error(f"AUTO_SUBMIT_ACCESS_DENIED: user={request.user.id} attempting {test_attempt.id}")
-        logger.warning(f"Auto-submit access denied for user {request.user.id} attempting {test_attempt.id}")
-        return JsonResponse({'success': False, 'error': 'Access denied'})
-    
-    # Check if already submitted
-    if test_attempt.is_submitted:
-        auto_submit_logger.warn(f"AUTO_SUBMIT_ALREADY_SUBMITTED: test={test_attempt.id}, user={request.user.username}")
-        logger.info(f"Auto-submit attempted on already submitted test {test_attempt.id}")
-        return JsonResponse({'success': False, 'error': 'Test has already been submitted'})
-    
-    # INDUSTRY PATTERN: Server-authoritative time validation (v1.5.2)
-    # Use session's end_time property which includes +1 minute compensation for manual submission
-    session = test_attempt.test_session
-    test_start_time_utc = session.start_time  # Already stored in UTC
-    actual_end_time_utc = session.end_time  # Uses end_time property with compensation
-    current_server_time_utc = timezone.now()  # Always UTC
-    
-    # Grace period for network latency (industry standard: 30 seconds)
-    grace_period = timezone.timedelta(seconds=30)
-    grace_end_time = actual_end_time_utc + grace_period
-    
-    # Log timing calculations for debugging
-    timing_context = {
-        'test_start_time_utc': test_start_time_utc.isoformat(),
-        'test_duration_minutes': session.test.time_limit_minutes,
-        'actual_end_time_utc': actual_end_time_utc.isoformat(),
-        'current_server_time_utc': current_server_time_utc.isoformat(),
-        'grace_end_time': grace_end_time.isoformat(),
-        'time_since_start': (current_server_time_utc - test_start_time_utc).total_seconds(),
-        'time_until_end': (actual_end_time_utc - current_server_time_utc).total_seconds(),
-        'grace_period_seconds': 30
-    }
-    auto_submit_logger.info(f"AUTO_SUBMIT_TIMING_CALC: {json.dumps(timing_context, indent=2)}")
-    
-    # Server-side validation: Only allow auto-submit if time has actually expired
-    if current_server_time_utc < actual_end_time_utc:
-        # Test time has not actually expired yet
-        remaining_seconds = int((actual_end_time_utc - current_server_time_utc).total_seconds())
-        auto_submit_logger.warn(f"AUTO_SUBMIT_PREMATURE_BLOCKED: test={test_attempt.id}, remaining={remaining_seconds}s, user={request.user.username}")
-        logger.warning(f"Premature auto-submit blocked for test {test_attempt.id}, {remaining_seconds}s remaining")
-        return JsonResponse({
-            'success': False, 
-            'error': 'Test time has not expired yet',
-            'server_time_utc': current_server_time_utc.isoformat(),
-            'test_end_time_utc': actual_end_time_utc.isoformat(),
-            'remaining_seconds': remaining_seconds
-        })
-    
-    # Allow auto-submit within grace period (for network latency)
-    if current_server_time_utc > grace_end_time:
-        # Beyond grace period, but still allow (answers are continuously saved)
-        grace_exceeded_seconds = int((current_server_time_utc - grace_end_time).total_seconds())
-        auto_submit_logger.warn(f"AUTO_SUBMIT_BEYOND_GRACE: test={test_attempt.id}, late={grace_exceeded_seconds}s, user={request.user.username}")
-        logger.info(f"Auto-submit beyond grace period for test {test_attempt.id}, {grace_exceeded_seconds}s late")
-    
-    # Log auto-submit trigger details for monitoring
-    time_since_expiry = int((current_server_time_utc - actual_end_time_utc).total_seconds())
-    
-    # Create comprehensive log entry for debugging
-    log_data = {
-        'event': 'auto_submit_triggered',
-        'test_attempt_id': test_attempt.id,
-        'user_id': request.user.id,
-        'username': request.user.username,
-        'test_start_time_utc': test_start_time_utc.isoformat(),
-        'actual_end_time_utc': actual_end_time_utc.isoformat(),
-        'current_server_time_utc': current_server_time_utc.isoformat(),
-        'time_since_expiry_seconds': time_since_expiry,
-        'grace_period_seconds': 30,
-        'within_grace_period': time_since_expiry <= 30,
-        'request_method': request.method,
-        'request_content_type': request.content_type,
-        'user_agent': request.META.get('HTTP_USER_AGENT', ''),
-        'remote_addr': request.META.get('REMOTE_ADDR', ''),
-        'test_duration_minutes': session.test.time_limit_minutes
-    }
-    
-    auto_submit_logger.info(f"AUTO_SUBMIT_TIMING_VALID: test={test_attempt.id}, time_since_expiry={time_since_expiry}s, user={request.user.username}")
-    logger.info(f"Auto-submit triggered for test {test_attempt.id}, {time_since_expiry}s after expiry - {log_data}")
-    
-    # Calculate total time spent using server timestamps
-    total_time_spent = int((current_server_time_utc - test_attempt.started_at).total_seconds())
-    question_time_spent = test_attempt.answers.aggregate(total=models.Sum('time_spent_seconds'))['total'] or 0
-    
-    # Mark as submitted with UTC timestamp
-    test_attempt.is_submitted = True
-    test_attempt.submitted_at = current_server_time_utc
-    test_attempt.total_time_spent = total_time_spent
-    test_attempt.save()
-    
-    # Calculate score (simple scoring: correct = 1, incorrect/blank = 0)
-    total_questions = test_attempt.total_questions
-    correct_answers = test_attempt.answers.filter(is_correct=True).count()
-    score_percentage = round((correct_answers / total_questions) * 100) if total_questions > 0 else 0
-    
-    # Format time for display
-    def format_time(seconds):
-        hours = seconds // 3600
-        minutes = (seconds % 3600) // 60
-        secs = seconds % 60
-        if hours > 0:
-            return f"{hours}h {minutes}m {secs}s"
-        elif minutes > 0:
-            return f"{minutes}m {secs}s"
-        else:
-            return f"{secs}s"
-    
-    # Calculate average time per question
-    avg_time_per_question = int(total_time_spent / total_questions) if total_questions > 0 else 0
-    
-    # Store comprehensive results in session for results page
-    incorrect_answers = total_questions - correct_answers
-    request.session['test_results'] = {
-        'attempt_id': test_attempt.id,
-        'total_questions': total_questions,
-        'correct_answers': correct_answers,
-        'incorrect_answers': incorrect_answers,
-        'score_percentage': score_percentage,
-        'test_title': test_attempt.test.title,
-        'total_time_spent': total_time_spent,
-        'total_time_formatted': format_time(total_time_spent),
-        'question_time_spent': question_time_spent,
-        'question_time_formatted': format_time(question_time_spent),
-        'avg_time_per_question': avg_time_per_question,
-        'avg_time_per_question_formatted': format_time(avg_time_per_question),
-        'submitted_at': timezone.localtime(current_server_time_utc).strftime('%B %d, %Y at %I:%M %p'),
-        'auto_submit_details': {
-            'triggered_at_utc': current_server_time_utc.isoformat(),
-            'test_end_time_utc': actual_end_time_utc.isoformat(),
-            'time_since_expiry_seconds': time_since_expiry,
-            'grace_period_used': time_since_expiry <= 30
-        }
-    }
-    
-    # Log successful auto-submit completion
-    completion_log = {
-        'event': 'auto_submit_completed',
-        'test_attempt_id': test_attempt.id,
-        'user_id': request.user.id,
-        'username': request.user.username,
-        'submitted_at_utc': current_server_time_utc.isoformat(),
-        'total_time_spent_seconds': total_time_spent,
-        'question_time_spent_seconds': question_time_spent,
-        'score_percentage': score_percentage,
-        'correct_answers': correct_answers,
-        'total_questions': total_questions,
-        'time_since_expiry_seconds': time_since_expiry,
-        'grace_period_used': time_since_expiry <= 30
-    }
-    
-    auto_submit_logger.info(f"AUTO_SUBMIT_SUCCESS: {json.dumps(completion_log, indent=2)}")
-    logger.info(f"Auto-submit completed successfully for test {test_attempt.id} - {completion_log}")
-    
-    return JsonResponse({
-        'success': True,
-        'message': 'Test auto-submitted successfully',
-        'redirect_url': reverse('test_results'),
-        'server_validation': {
-            'submitted_at_utc': current_server_time_utc.isoformat(),
-            'time_since_expiry': time_since_expiry,
-            'grace_period_used': time_since_expiry <= 30,
-            'total_time_spent': total_time_spent,
-            'score_percentage': score_percentage
-        }
-    })
 
 
 @login_required  
@@ -1427,39 +1126,3 @@ def individual_result_release(request, session_id, attempt_id):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-@login_required
-def refresh_csrf_token(request):
-    """
-    Enhanced CSRF token refresh endpoint for long-running test sessions
-    Provides fresh CSRF tokens to prevent expiration during tests
-    """
-    from django.middleware.csrf import get_token
-    from django.utils import timezone
-    import logging
-    
-    logger = logging.getLogger(__name__)
-    
-    if request.method != 'GET':
-        return JsonResponse({'success': False, 'error': 'Method not allowed'})
-    
-    try:
-        # Generate fresh CSRF token
-        new_token = get_token(request)
-        
-        # Log the token refresh for monitoring
-        logger.info(f"CSRF token refreshed for user {request.user.id} ({request.user.username})")
-        
-        return JsonResponse({
-            'success': True,
-            'csrf_token': new_token,
-            'refreshed_at': timezone.now().isoformat(),
-            'user_id': request.user.id
-        })
-        
-    except Exception as e:
-        logger.error(f"CSRF token refresh failed for user {request.user.id}: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'error': 'Failed to refresh CSRF token',
-            'details': str(e)
-        })

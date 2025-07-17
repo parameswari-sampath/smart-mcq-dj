@@ -173,7 +173,7 @@ LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/accounts/dashboard/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
-# Enhanced logging configuration for auto-submit debugging
+# Logging configuration
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -197,11 +197,6 @@ LOGGING = {
             'filename': 'logs/django.log',
             'formatter': 'verbose',
         },
-        'auto_submit_file': {
-            'class': 'logging.FileHandler',
-            'filename': 'logs/auto_submit_2025_07_16.log',  # Fixed filename for consistency
-            'formatter': 'verbose',
-        },
     },
     'loggers': {
         'django': {
@@ -210,13 +205,8 @@ LOGGING = {
             'propagate': True,
         },
         'accounts.views': {
-            'handlers': ['auto_submit_file', 'console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        'auto_submit': {
-            'handlers': ['auto_submit_file'],
-            'level': 'DEBUG',
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
             'propagate': False,
         },
     },
