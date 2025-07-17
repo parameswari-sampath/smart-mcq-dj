@@ -45,8 +45,9 @@ class TestSession(models.Model):
 
     @property
     def end_time(self):
-        """Calculate end time based on start time + test duration"""
-        return self.start_time + timedelta(minutes=self.test.time_limit_minutes)
+        """Calculate end time based on start time + test duration + 1 minute compensation for manual submission"""
+        # Add 1 minute compensation to allow manual submission in final minute instead of auto-submit
+        return self.start_time + timedelta(minutes=self.test.time_limit_minutes + 1)
 
     @property
     def is_expired(self):

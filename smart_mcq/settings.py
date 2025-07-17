@@ -15,6 +15,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from urllib.parse import urlparse, parse_qsl
 from datetime import datetime
+from django.utils import timezone
 
 load_dotenv()
 
@@ -198,7 +199,7 @@ LOGGING = {
         },
         'auto_submit_file': {
             'class': 'logging.FileHandler',
-            'filename': 'logs/auto_submit_{}.log'.format(datetime.now().strftime('%Y_%m_%d')),
+            'filename': 'logs/auto_submit_2025_07_16.log',  # Fixed filename for consistency
             'formatter': 'verbose',
         },
     },

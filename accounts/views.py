@@ -348,11 +348,9 @@ def take_test(request, attempt_id):
             return redirect('dashboard')
         
         # v1.5.2: Server-authoritative time validation
-        # Calculate actual test end time using UTC timestamps
+        # Use session's end_time property which includes +1 minute compensation for manual submission
         session = test_attempt.test_session
-        test_start_time_utc = session.start_time  # Already stored in UTC
-        test_duration = timezone.timedelta(minutes=session.test.time_limit_minutes)
-        actual_end_time_utc = test_start_time_utc + test_duration
+        actual_end_time_utc = session.end_time  # Uses end_time property with compensation
         current_server_time_utc = timezone.now()  # Always UTC
         
         # Server-side validation: If time has expired, auto-submit immediately
@@ -400,9 +398,11 @@ def take_test(request, attempt_id):
             'answered_questions_count': answered_questions_count,
             'progress_percentage': test_attempt.progress_percentage,
             'test_session': test_attempt.test_session,
-            'test_end_time_utc': actual_end_time_utc,  # Calculated UTC end time
+            'test_end_time_utc': actual_end_time_utc,  # Calculated UTC end time with compensation
             'server_time_utc': current_server_time_utc,  # Current server UTC time
-            'remaining_seconds': max(0, int((actual_end_time_utc - current_server_time_utc).total_seconds())),
+            # Show original test duration to user (without compensation minute)
+            'test_end_time_original': session.start_time + timezone.timedelta(minutes=session.test.time_limit_minutes),
+            'remaining_seconds': max(0, int((session.start_time + timezone.timedelta(minutes=session.test.time_limit_minutes) - current_server_time_utc).total_seconds())),
             'grace_period_seconds': 30,  # Industry standard grace period
         }
         
@@ -756,11 +756,10 @@ def auto_submit_test(request, test_attempt):
         return JsonResponse({'success': False, 'error': 'Test has already been submitted'})
     
     # INDUSTRY PATTERN: Server-authoritative time validation (v1.5.2)
-    # Calculate actual test end time using UTC timestamps
+    # Use session's end_time property which includes +1 minute compensation for manual submission
     session = test_attempt.test_session
     test_start_time_utc = session.start_time  # Already stored in UTC
-    test_duration = timezone.timedelta(minutes=session.test.time_limit_minutes)
-    actual_end_time_utc = test_start_time_utc + test_duration
+    actual_end_time_utc = session.end_time  # Uses end_time property with compensation
     current_server_time_utc = timezone.now()  # Always UTC
     
     # Grace period for network latency (industry standard: 30 seconds)
