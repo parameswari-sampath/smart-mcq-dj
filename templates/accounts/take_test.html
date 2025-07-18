@@ -449,13 +449,42 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function showTimeUpMessage() {
-        showWarningAlert('Time is up! Please submit your test immediately.', 'danger');
+        // Show time up alert
+        showWarningAlert('Time is up! You must submit your test now.', 'danger');
         
-        // Keep submit button available even after time expires
+        // Disable ALL navigation and form elements
+        const allInputs = document.querySelectorAll('input[type="radio"], button:not(#submit-test-btn):not(#confirm-submit-btn)');
+        allInputs.forEach(input => {
+            input.disabled = true;
+        });
+        
+        // Create "End Test Now" overlay
+        const timeUpOverlay = document.createElement('div');
+        timeUpOverlay.id = 'time-up-overlay';
+        timeUpOverlay.innerHTML = `
+            <div class="time-up-message">
+                <h2><i class="fas fa-exclamation-triangle"></i> TIME UP!</h2>
+                <p>Your test time has expired. You must submit your test immediately.</p>
+                <p>No further changes to answers are allowed.</p>
+                <button type="button" class="btn btn-danger btn-lg btn-pulse" id="end-test-now-btn">
+                    <i class="fas fa-paper-plane"></i> END TEST NOW
+                </button>
+            </div>
+        `;
+        document.body.appendChild(timeUpOverlay);
+        
+        // Add click handler for the "End Test Now" button
+        document.getElementById('end-test-now-btn').addEventListener('click', function() {
+            confirmSubmission();
+        });
+        
+        // Also update the original submit button as backup
         const submitBtn = document.getElementById('submit-test-btn');
         if (submitBtn) {
-            submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> SUBMIT NOW - Time Expired';
+            submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> END TEST NOW';
             submitBtn.classList.add('btn-pulse');
+            submitBtn.classList.remove('btn-success');
+            submitBtn.classList.add('btn-danger');
         }
     }
     
@@ -495,6 +524,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // No auto-submit functions needed - manual submission with page lock only
+    
+    // Testing function to simulate timer end (for development/testing only)
+    window.testTimerEnd = function() {
+        console.log('Testing timer end functionality...');
+        timerText.textContent = 'TIME UP';
+        showTimeUpMessage();
+    };
     
     // Start timer
     updateTimer();
@@ -789,6 +825,20 @@ document.addEventListener('DOMContentLoaded', function() {
     pointer-events: none; /* Allow clicking through except for the message */
 }
 
+/* Time up overlay styles */
+#time-up-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(220, 53, 69, 0.95);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .lock-message {
     background: #dc3545;
     color: white;
@@ -799,6 +849,39 @@ document.addEventListener('DOMContentLoaded', function() {
     pointer-events: auto;
     max-width: 400px;
     margin: 20px;
+}
+
+.time-up-message {
+    background: white;
+    color: #dc3545;
+    padding: 40px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+    max-width: 500px;
+    margin: 20px;
+    border: 3px solid #dc3545;
+}
+
+.time-up-message h2 {
+    color: #dc3545;
+    font-size: 2.5em;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.time-up-message p {
+    color: #6c757d;
+    font-size: 1.2em;
+    margin-bottom: 15px;
+    line-height: 1.4;
+}
+
+.time-up-message .btn {
+    font-size: 1.3em;
+    padding: 15px 30px;
+    margin-top: 10px;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
 }
 
 .lock-message h4 {
@@ -861,6 +944,26 @@ document.addEventListener('DOMContentLoaded', function() {
     
     .lock-message p {
         font-size: 1em;
+    }
+    
+    .time-up-message {
+        max-width: 90%;
+        padding: 25px;
+    }
+    
+    .time-up-message h2 {
+        font-size: 2em;
+        margin-bottom: 15px;
+    }
+    
+    .time-up-message p {
+        font-size: 1em;
+        margin-bottom: 12px;
+    }
+    
+    .time-up-message .btn {
+        font-size: 1.1em;
+        padding: 12px 25px;
     }
 }
 </style>
