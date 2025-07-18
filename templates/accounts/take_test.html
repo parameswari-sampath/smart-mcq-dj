@@ -505,22 +505,33 @@ document.addEventListener('DOMContentLoaded', function() {
             existingAlert.remove();
         }
         
-        // Create new alert
+        // Create new alert with close button
         const alert = document.createElement('div');
-        alert.className = `alert alert-${type} timer-warning-alert`;
+        alert.className = `alert alert-${type} alert-dismissible timer-warning-alert`;
         alert.innerHTML = `
-            <strong><i class="fas fa-exclamation-triangle"></i> Time Warning</strong><br>
-            ${message}
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <strong><i class="fas fa-clock"></i> Time Warning</strong><br>
+                    <small>${message}</small>
+                </div>
+                <button type="button" class="btn-close btn-close-white ms-2" aria-label="Close"></button>
+            </div>
         `;
         
         document.body.appendChild(alert);
         
-        // Auto-hide after 5 seconds
+        // Add close button functionality
+        const closeBtn = alert.querySelector('.btn-close');
+        closeBtn.addEventListener('click', () => {
+            alert.remove();
+        });
+        
+        // Auto-hide after 8 seconds (longer for readability)
         setTimeout(() => {
             if (alert.parentNode) {
                 alert.remove();
             }
-        }, 5000);
+        }, 8000);
     }
     
     // No auto-submit functions needed - manual submission with page lock only
@@ -530,6 +541,17 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Testing timer end functionality...');
         timerText.textContent = 'TIME UP';
         showTimeUpMessage();
+    };
+    
+    // Testing function to show warning messages (for development/testing only)
+    window.testWarning5min = function() {
+        console.log('Testing 5-minute warning...');
+        showWarningAlert('5 minutes remaining!', 'warning');
+    };
+    
+    window.testWarning1min = function() {
+        console.log('Testing 1-minute warning...');
+        showWarningAlert('Final minute! Please submit your test now.', 'danger');
     };
     
     // Start timer
@@ -807,7 +829,46 @@ document.addEventListener('DOMContentLoaded', function() {
     top: 80px;
     right: 20px;
     z-index: 1040;
-    max-width: 300px;
+    max-width: 320px;
+    pointer-events: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.timer-warning-alert .btn-close {
+    font-size: 0.8em;
+}
+
+.timer-warning-alert.alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffd60a;
+    color: #664d03;
+}
+
+.timer-warning-alert.alert-danger {
+    background-color: #f8d7da;
+    border-color: #f5c2c7;
+    color: #721c24;
+}
+
+.timer-warning-alert.alert-warning .btn-close {
+    filter: invert(1) grayscale(100%) brightness(0.8);
+}
+
+.timer-warning-alert.alert-danger .btn-close {
+    filter: invert(1) grayscale(100%) brightness(0.8);
 }
 
 /* Page lock overlay styles */
